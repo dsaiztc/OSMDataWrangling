@@ -46,6 +46,14 @@ def count_tags(filename):
 
 	pprint.pprint(tag_dict)
 
+# Print out the users that have eddited the file
+def unique_users(filename):
+	users = set()
+	for event, elem in ET.iterparse(filename):
+		if elem.tag in ['node', 'way', 'relation']:
+			users.add(elem.attrib['user'])
+	pprint.pprint(users)
+
 # Count the type of keys inside tag elements regarding its "structure" (regx pattern)
 def type_of_keys(filename):
 	lower = re.compile(r'^([a-z]|_)*$')
@@ -159,14 +167,6 @@ def check_weird_keys(filename):
 						print k, elem_tag.attrib['v']
 						print ''
 
-# Print out the users that have eddited the file
-def unique_users(filename):
-	users = set()
-	for event, elem in ET.iterparse(filename):
-		if elem.tag in ['node', 'way', 'relation']:
-			users.add(elem.attrib['user'])
-	pprint.pprint(users)
-
 # If the my_key exists in my_dict, add 1 to the value; create it with value 1 otherwise
 def sum_to_dict(my_dict, my_key):
 	if my_key in my_dict:
@@ -194,6 +194,7 @@ def main():
 	#type_of_keys_and_tags(filename)
 	#type_of_keys_and_tags_by_element(filename)
 	#check_weird_keys(filename)
+	print ''
 
 
 main()

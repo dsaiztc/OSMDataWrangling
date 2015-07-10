@@ -135,17 +135,15 @@ def type_of_keys_and_tags_by_element(filename, elements=['node', 'way']):
 					else:
 						elements_dict_num[elem.tag]['other'] += 1
 						sum_to_dict(elements_dict[elem.tag]['other'], k)
+
 	print 'Patterns on tags:\n'
 	pprint.pprint(elements_dict_num)
-	with open('../data/keys_num.json', 'w') as json_file:
-		json.dump(elements_dict_num, json_file)
+
 	print '\n\nKinds of tags'
 	pprint.pprint(elements_dict)
 
-	with open('../data/keys_num.json', 'w') as json_file:
-		json.dump(elements_dict_num, json_file)
-	with open('../data/keys.json', 'w') as json_file:
-		json.dump(elements_dict, json_file)
+	#save_json(elements_dict_num, 'keys_num')
+	#save_json(elements_dict, 'keys')
 
 # Once we have the keys we want to ckeck for each Element (node or ways) we print it out to see if there's any problem
 def check_weird_keys(filename):
@@ -161,13 +159,6 @@ def check_weird_keys(filename):
 						print k, elem_tag.attrib['v']
 						print ''
 
-# If the my_key exists in my_dict, add 1 to the value; create it with value 1 otherwise
-def sum_to_dict(my_dict, my_key):
-	if my_key in my_dict:
-		my_dict[my_key] += 1
-	else:
-		my_dict[my_key] = 1
-
 # Print out the users that have eddited the file
 def unique_users(filename):
 	users = set()
@@ -175,6 +166,24 @@ def unique_users(filename):
 		if elem.tag in ['node', 'way', 'relation']:
 			users.add(elem.attrib['user'])
 	pprint.pprint(users)
+
+# If the my_key exists in my_dict, add 1 to the value; create it with value 1 otherwise
+def sum_to_dict(my_dict, my_key):
+	if my_key in my_dict:
+		my_dict[my_key] += 1
+	else:
+		my_dict[my_key] = 1
+
+# Save dictionary as JSON on '../data/'
+def save_json(my_dict, json_name):
+	with open('../data/' + json_name + '.json', 'w') as json_file:
+		json.dump(my_dict, json_file)
+
+# Save a list of dicionaries on a JSON Lines on '../data/'
+def save_json_list(my_dict_list, json_name):
+	with open('../data/' + json_name + '.jsonl', 'w') as json_file:
+		for json_doc in my_dict_list:
+			json_file.write(json.dumps(json_doc) + '\n')
 
 def main():
 	#printhead(filename, 500)
@@ -184,6 +193,7 @@ def main():
 	#unique_users(filename)
 	#type_of_keys_and_tags(filename)
 	#type_of_keys_and_tags_by_element(filename)
-	check_weird_keys(filename)
+	#check_weird_keys(filename)
+
 
 main()

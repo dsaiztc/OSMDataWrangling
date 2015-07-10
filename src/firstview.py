@@ -31,7 +31,7 @@ def count_elements(filename):
 		else:
 			tag_dict[elem.tag] = 1
 
-	return tag_dict
+	pprint.pprint(tag_dict)
 
 # Count the number of different tags within the nodes or ways elements
 def count_tags(filename):
@@ -44,8 +44,9 @@ def count_tags(filename):
 				else:
 					tag_dict[tag.attrib['k']] = 1
 
-	return tag_dict
+	pprint.pprint(tag_dict)
 
+# Count the type of keys inside tag elements regarding its "structure" (regx pattern)
 def type_of_keys(filename):
 	lower = re.compile(r'^([a-z]|_)*$')
 	lower_colon = re.compile(r'^([a-z]|_)*:([a-z]|_)*$')
@@ -69,9 +70,10 @@ def type_of_keys(filename):
 				else:
 					other[k] = 1
 				keys['other'] += 1
-	pprint.pprint(other)
-	return keys
+	pprint.pprint(keys)
 
+# Count the type of keys inside tag elements regarding its "structure" (regx pattern)
+# Also count the type of keys inside those patterns
 def type_of_keys_and_tags(filename):
 
 	lower = re.compile(r'^([a-z]|_)*$')
@@ -100,6 +102,9 @@ def type_of_keys_and_tags(filename):
 	print '\n\nKinds of tags'
 	pprint.pprint(keys)
 
+# Count the type of keys inside tag elements regarding its "structure" (regx pattern)
+# Also count the type of keys inside those patterns
+# Also classify (nest) depending on the type of "root" element (node or way)
 def type_of_keys_and_tags_by_element(filename, elements=['node', 'way']):
 
 	lower = re.compile(r'^([a-z]|_)*$')
@@ -142,6 +147,7 @@ def type_of_keys_and_tags_by_element(filename, elements=['node', 'way']):
 	with open('../data/keys.json', 'w') as json_file:
 		json.dump(elements_dict, json_file)
 
+# Once we have the keys we want to ckeck for each Element (node or ways) we print it out to see if there's any problem
 def check_weird_keys(filename):
 	weirdkeys = {'node': ['CODIGO', 'FIXME', 'naptan:CommonName', 'naptan:Indicator', 'naptan:Street', 'ref:RRG'],
 				 'way': ['FIXME', 'N', u'Torre\xf3n del castillo de los Salazar', 'fuel:']}
@@ -155,25 +161,27 @@ def check_weird_keys(filename):
 						print k, elem_tag.attrib['v']
 						print ''
 
-def sum_to_dict(my_dict, value):
-	if value in my_dict:
-		my_dict[value] += 1
+# If the my_key exists in my_dict, add 1 to the value; create it with value 1 otherwise
+def sum_to_dict(my_dict, my_key):
+	if my_key in my_dict:
+		my_dict[my_key] += 1
 	else:
-		my_dict[value] = 1
+		my_dict[my_key] = 1
 
+# Print out the users that have eddited the file
 def unique_users(filename):
 	users = set()
 	for event, elem in ET.iterparse(filename):
 		if elem.tag in ['node', 'way', 'relation']:
 			users.add(elem.attrib['user'])
-	return users
+	pprint.pprint(users)
 
 def main():
 	#printhead(filename, 500)
-	#tags = count_elements(filename)
-	#tags = count_tags(filename)
-	#keys = type_of_keys(filename)
-	#users = unique_users(filename)
+	#count_elements(filename)
+	#count_tags(filename)
+	#type_of_keys(filename)
+	#unique_users(filename)
 	#type_of_keys_and_tags(filename)
 	#type_of_keys_and_tags_by_element(filename)
 	check_weird_keys(filename)

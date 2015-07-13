@@ -188,7 +188,7 @@ def save_json_list(my_dict_list, json_name):
 def main():
 	#printhead(filename, 500)
 	#count_elements(filename)
-	#count_tags(filename)
+	count_tags(filename)
 	#type_of_keys(filename)
 	#unique_users(filename)
 	#type_of_keys_and_tags(filename)

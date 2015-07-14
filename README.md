@@ -16,7 +16,7 @@ To obtain the data I have made a query to `http://overpass-api.de/query_form.htm
 (node(42.5966, -4.2339, 43.2832, -2.7370);<;);out meta;
 ```
 
-And the resulting `osm` (or `xml`) data is stored on `/data/file.osm`, which is a *355,3 MB* file (that can be downloaded also [here](https://www.dropbox.com/s/9d8io7q19lkq2b1/merindades.osm?dl=0)). A *sample* of that file (created with the [sample.py](./src/sample.py)) can be accessed [here](./data/sample.osm).
+And the resulting `osm` (or `xml`) data is stored on `/data/file.osm`, which is a *355,3 MB* file (that can be downloaded also [here](https://www.dropbox.com/s/9d8io7q19lkq2b1/merindades.osm?dl=0)). A *sample* of that file (created with the [sample.py](./src/sample.py) script) can be accessed [here](./data/sample.osm).
 
 ## 3. Structure of the OSM file
 
@@ -110,7 +110,7 @@ to
 
 ## 4. Auditing the data
 
-We are going to assume that **all the attributes except for the *tags* are going to be correct**. That is, the *common attributes*, the GPS positions for the *nodes* and the list of nodes for the *ways* are not going to be sanity checked.
+We are going to assume that **all the attributes, except for the *tags*, are going to be correct**. That is, the *common attributes*, the GPS positions for the *nodes* and the list of nodes for the *ways* are not going to be sanity checked.
 
 As we have seen before, each *tag* has a *key/value pair* referring a specific characteristic of that *node* or *way*. We are going to audit first the *keys*, and then we will continue with the *values*.
 
@@ -135,7 +135,7 @@ If we take a look at the *tags* presented in the document, classifying their *ke
          'problemchars': 0}}
 ```
 
-In this case we have made a count of the different categories: ***lower*** represents all the *keys* that are composed by lower case characters or the underscore (ex. `admin_level`), ***lower_colon*** represents all the *keys* that have the same structure as the previous but that also includes one namespace (ex. `addr:city`), *lower_colon2* **represents** all the *keys* that have the same structure as *lower* but that includes two namespaces (ex. `maxspeed:lanes:forward`), ***problemchars*** represents all the values with one or more problematic characters (other than `a-z` or `_`) and finally ***other*** represents all the other cases.
+In this case we have made a count of the different categories: ***lower*** represents all the *keys* that are composed by lower case characters and/or the underscore (ex. `admin_level`), ***lower_colon*** represents all the *keys* that have the same structure as the previous but that also includes one namespace (ex. `addr:city`), *lower_colon2* **represents** all the *keys* that have the same structure as *lower* but that includes two namespaces (ex. `maxspeed:lanes:forward`), ***problemchars*** represents all the values with one or more problematic characters (other than `a-z` or `_`) and finally ***other*** represents all the other cases.
 
 As we said before, we can nest the keys with namespaces within attributes of our JSON-like document. So the *tags* in the categories ***lower_colon*** and ***lower_colon2*** could be treated that way. In the case of the ***lower*** category, we can add directly the *tags* as attributes to our document. As we have not found any problematic character, there is nothing to fix in that area.
 
@@ -181,9 +181,9 @@ Regarding the ***other*** category, we should check what kind of *tags* we have.
 
 As we can see, most of the cases have been classified into this category because they have capital letters or even numbers. The [OSM wiki](http://wiki.openstreetmap.org/wiki/Tags) specifies that *both the key and value are free format text fields*, however it is not a common practice to include such kind of characters on the *key*. We are going to analyze each one of those values to understand what they mean.
 
-The [**FIXME**](http://wiki.openstreetmap.org/wiki/Key:fixme) *key* *"allows contributors to mark objects and places that need further attention”*. The **CODIGO** *key* does not seem to have any meaning, we will try to understand what it means later. The **N** *key* seems to be some kind of error, we will try to discover its meaning later too. The **naptan** namespace references the [NaPTAN and NPTG](http://wiki.openstreetmap.org/wiki/NaPTAN) datasets for bus stops and places which the [UK Department for Transport](http://www.dft.gov.uk/) and [Traveline](http://www.traveline.org.uk/aboutTL.htm) have offered to make available to OpenStreetMap project, so given that this region belongs to Spain, I suppose these values should not be there. The [**ideewfs**](http://wiki.openstreetmap.org/wiki/ES:RGN) *key* refers to the *Web Feature Services* (WFS) of the *Infraestructura de Datos Espaciales de España* (IDEE - Spatial Data Infrastructure of Spain), which is a web service to consult geographic features of Spain, so this data refers to data that belongs to the *Red Geodésica Nacional* (RGN - National Geodetic Network). The [**ref**](http://wiki.openstreetmap.org/wiki/Key:ref) *key* is used for reference numbers or codes (as we have seen for referencing the *nodes* within a *way*), which in this case has the **RRG** namespace, that is referenced on the RGN (as the **ideewfs**). Nevertheless, I have not found any reference about what it means, so we will treat them the same way as others. The penultimate element is the [**fuel**](http://wiki.openstreetmap.org/wiki/Key:fuel) *key*, which describes which fuels are available at [amenity](http://wiki.openstreetmap.org/wiki/Key:amenity)=[fuel](http://wiki.openstreetmap.org/wiki/Tag:amenity%3Dfuel) sites. Finally we have a value `u'Torre\xf3n del castillo de los Salazar'` that clearly should not be there because it refers to a name of some kind of castle-like building, so it has to be within the *value* of a **[historic](http://wiki.openstreetmap.org/wiki/Key:historic):castle** *key* (for example).
+The [**FIXME**](http://wiki.openstreetmap.org/wiki/Key:fixme) *key* *"allows contributors to mark objects and places that need further attention”*. The **CODIGO** *key* does not seem to have any meaning, we will try to understand what it means later. The **N** *key* seems to be some kind of error, we will try to discover its meaning later too. The **naptan** namespace references the [NaPTAN and NPTG](http://wiki.openstreetmap.org/wiki/NaPTAN) datasets for bus stops and places which the [UK Department for Transport](http://www.dft.gov.uk/) and [Traveline](http://www.traveline.org.uk/aboutTL.htm) have offered to make available to OpenStreetMap project, so given that this region belongs to Spain, I suppose these values should not be there. The [**ideewfs**](http://wiki.openstreetmap.org/wiki/ES:RGN) *key* refers to the *Web Feature Services* (WFS) of the *Infraestructura de Datos Espaciales de España* (IDEE - Spatial Data Infrastructure of Spain), which is a web service to consult geographic features of Spain, so this data refers to data that belongs to the *Red Geodésica Nacional* (RGN - National Geodetic Network). The [**ref**](http://wiki.openstreetmap.org/wiki/Key:ref) *key* is used for reference numbers or codes (as we have seen for referencing the *nodes* within a *way*), which in this case has the **RRG** namespace, that is referenced on the RGN (as the **ideewfs**). Nevertheless, I have not found any reference about what it means, so we will treat them the same way as the others. The penultimate element is the [**fuel**](http://wiki.openstreetmap.org/wiki/Key:fuel) *key*, which describes which fuels are available at [amenity](http://wiki.openstreetmap.org/wiki/Key:amenity)=[fuel](http://wiki.openstreetmap.org/wiki/Tag:amenity%3Dfuel) sites. Finally we have a value `u'Torre\xf3n del castillo de los Salazar'` that clearly should not be there because it refers to a name of some kind of castle-like building, so it has to be within the *value* of a **[historic](http://wiki.openstreetmap.org/wiki/Key:historic):castle** *key* (for example).
 
-Summarizing, we can proceed to storage as attributes in our document the *keys* **FIXME** (because we do not know what that user was referring to) and **fuel**. In the case of **ideewfs** and **ref:RRG**, it turns out that these *nodes* has a *tag* with a **source** *key* pointing to the IDEE, so both reference to the same source. However, we are not sure about the meaning of those *tags*, so we will further analysis of the *keys*. The case **CODIGO** refers to a some specific trees that are protected by the Basque Government and have a unique identifier that can be consulted [here](http://www.uragentzia.euskadi.net/u81-ecoaguas/es/u95aWar/lugaresJSP/U95aVolverLugares.do?u95aMigasPan=L,1,1,1,3,1,1;L,2,13674,018;H,2,14021,016;L,2,13745,002;EN,1,9,1,300;L,2,13733,007;). They are under the [*Primary Feature* **natural**](http://wiki.openstreetmap.org/wiki/Map_Features#Natural) so we can treat these values as other attributes within our object.
+Summarizing, we can proceed to storage as attributes in our document the *keys* **FIXME** (because we do not know what that user was referring to) and **fuel**. In the case of **ideewfs** and **ref:RRG**, it turns out that these *nodes* has a *tag* with a **source** *key* pointing to the IDEE, so both reference to the same source. However, we are not sure about the meaning of those *tags*, so we will need further analysis of the *keys*. The case **CODIGO** refers to a some specific trees that are protected by the Basque Government and have a unique identifier that can be consulted [here](http://www.uragentzia.euskadi.net/u81-ecoaguas/es/u95aWar/lugaresJSP/U95aVolverLugares.do?u95aMigasPan=L,1,1,1,3,1,1;L,2,13674,018;H,2,14021,016;L,2,13745,002;EN,1,9,1,300;L,2,13733,007;). They are under the [*Primary Feature* **natural**](http://wiki.openstreetmap.org/wiki/Map_Features#Natural) so we can treat these values as other attributes within our object.
 
 In the castle-case, effectively we have the following wrong *tag*: `<tag k="Torreón del castillo de los Salazar" v="water" />`. We do not know what the user wanted to say with the *water* value, but it is clear that the *key* in this case should be moved to a *tag* with a *name key*: `<tag k="name" v="Torreón del castillo de los Salazar" />`. The **N** *key* refers to a street name as the *tag* states: `<tag k="N" v="Calle Real" />`, so we should change it for `<tag k="name" v="Calle Real" />`.
 
@@ -241,4 +241,72 @@ After examining all these values, I would conclude that the most reasonable appr
 
 ### 4.2 Analyzing the *values*
 
-Now it is time to analyze all the *values* within the *tags* of the different *Elements*. Given the large amount of different attributes, we are going to focus in those that could be checked in some way, like the
+Now it is time to analyze all the *values* within the *tags* of the different *Elements*. Given the large amount of different attributes, we are going to focus in those that could be checked in some way, like the [address](http://wiki.openstreetmap.org/wiki/Key:addr) different fields.
+
+The address *keys* we have follow a distribution:
+
+``` json
+{'addr:city': 1673,
+ 'addr:country': 937,
+ 'addr:country_code': 15,
+ 'addr:full': 13,
+ 'addr:housename': 33,
+ 'addr:housenumber': 4804,
+ 'addr:inclusion': 3,
+ 'addr:interpolation': 145,
+ 'addr:place': 2,
+ 'addr:postcode': 1686,
+ 'addr:state': 5,
+ 'addr:street': 4909}
+```
+
+In this case we can differentiate between three types of values that we will likely find: text-based, numeric and code-based. The last of them references to those categories that do not represent a physical characteristic, but instead are used by OSM: [**addr:inclusion**](http://wiki.openstreetmap.org/wiki/Addresses#Using_Address_Interpolation_for_partial_surveys) and [**addr:interpolation**](http://wiki.openstreetmap.org/wiki/Key:addr:interpolation). We also have a *tag* that represents the full address, **addr:full**, which we are going to leave as it comes, regarding the complexity to parse a field like that.
+
+#### 4.2.1 Numeric values
+
+Regarding the numeric values, we have **addr:housenumber** and **addr:postcode**. These two have some variations and it would be better to analyze their structure (like we did with the *keys*). In the case of **postcode** there is one case where we have several values separated by semicolon, which matches with the city of Bilbao (it could probably be a good idea to convert those values into an array in the JSON document). We also have other value `'Larrabetzu'`, which is clearly not a postcode but a city name instead. 
+
+Attending the **housenumber** values, we can see different patterns: with only numbers, with numbers and a capital letter, with a number and a word *bis* (which means that there are two buildings with the same number; it appears close to the number, separated by a space, with capital and non capital letters), with a range of numbers (as a list and also as an interval) and others:
+
+``` json
+['SN(B)', 'SN(D)', '7 - 43', '2 - 36', '46, BIS', '2, 4 y 7', u'8, 1\xba D', '2, 4', '6, 8', '12, 14', '13-15', 'SN(A)', '15-17', '2019.', '1-3', 'SN(C)', 'SN(E)', '4, 6', 'km 508', '4, 6, 8, 10', 's/n', '3, 5, 7, 9', '12-14', '8, 10', '37-39', '12-38']
+```
+
+For those that have several values the best approach would be to save the values within an array, but we do not know if a range `12-14` includes the number 13 or not (probably not). We have also values with `s/n` which means *sin número* (*without number* in spanish). I suppose the `SN(...)` values refer the same as `s/n` but with a letter instead of a number. However, we have some values that could be corrected.
+
+#### 4.2.2 Text-based values
+
+Regarding the text-based values, we have **addr:city**, **addr:country**, **addr:country_code**, **addr:housename**, **addr:place**, **addr:state** and **addr:street**. In the cases of **country**, **country_code** and **state** we have the same value, *ES* (referring to Spain). In the case of **place** we only have two values, one of them does not start with capital letter, but apart from that, they seem correct. 
+
+Regarding the three cases left, we can see different patterns like strings with all capital letters and other with all small letters (only two cases). We are going to obviate those cases because the tasks to refactor them could be, at least, tedious. Analyzing the **housename**, we see one numeric value `1` that should not be there and three street names that probably should not be there either. In the case of **city**, we have one case that starts with lowercase and should be corrected.
+
+We are going to center our efforts analyzing the **street** value, looking mainly for unexpected street types or abbreviations and creating a *mapping* function to correct those values. That mapping can be viewed in the following dictionary:
+
+``` json
+mapping_street_types = {
+	'ACCESO': 'Acceso',
+	'AU': 'Autovía',
+	'AUTOVIA': 'Autovía',
+	'AVENIDA': 'Avenida',
+	'BARRIO': 'Barrio',
+	'B\xba': 'Barrio',
+	'C/': 'Calle',
+	'CALLE': 'Calle',
+	'CARRETERA': 'Carretera',
+	'CL': 'Calle',
+	'CR': 'Carretera',
+	'CRTA.': 'Carretera',
+	'CTRA.N-623,BURGOS-SANTANDER': 'Carretera N-623, Burgos-Santander',
+	'Carretera/Carrera': 'Carretera',
+	'Kalea': 'kalea',
+	'PLAZA': 'Plaza',
+	'POLIGONO': 'Polígono',
+	'Urbanizaci\xc3\xb3n': 'Urbanización',
+	'Urbanizaci\xf3n': 'Urbanización'
+}
+```
+
+In this case we are going to correct the street types that are in capital letters, but only the street type, not the rest of the string.
+
+## 5. Cleaning the data
+

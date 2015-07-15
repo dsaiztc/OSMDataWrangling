@@ -15,7 +15,7 @@ def get_keys_address(filename):
 
 	for event, elem in ET.iterparse(filename):
 		if elem.tag in ['node', 'way']:
-			for tag in elem.iter('tag'):
+			for tag in elem.findall('tag'):
 				k = tag.attrib['k']
 				if 'addr' in k:
 					sum_to_dict(address_dict, k)
@@ -28,7 +28,7 @@ def get_sets_depending_on_address_keys(filename, addr_keys):
 
 	for event, elem in ET.iterparse(filename):
 		if elem.tag in ['node', 'way']:
-			for tag in elem.iter('tag'):
+			for tag in elem.findall('tag'):
 				k = tag.attrib['k']
 				if 'addr' in k:
 					dict_addr_keys[k].add(tag.attrib['v'])
@@ -45,7 +45,7 @@ def analyze_numeric_fields_of_address(filename, fields=['addr:housenumber', 'add
 
 	for _, elem in ET.iterparse(filename):
 		if elem.tag in ['node', 'way']:
-			for tag in elem.iter('tag'):
+			for tag in elem.findall('tag'):
 				k = tag.attrib['k']
 				v = tag.attrib['v']
 				if k in fields:
@@ -72,7 +72,7 @@ def analyze_numeric_fields_of_address2(filename, fields=['addr:housenumber', 'ad
 
 	for _, elem in ET.iterparse(filename):
 		if elem.tag in ['node', 'way']:
-			for tag in elem.iter('tag'):
+			for tag in elem.findall('tag'):
 				k = tag.attrib['k']
 				v = tag.attrib['v']
 				if k in fields:
@@ -102,9 +102,13 @@ def check_text_values(filename, cases_to_check=['addr:city', 'addr:housename', '
 
 	for event, elem in ET.iterparse(filename):
 		if elem.tag in ['node', 'way']:
-			for tag in elem.iter('tag'):
+			for tag in elem.findall('tag'):
 				k = tag.attrib['k']
 				v = tag.attrib['v']
+
+				if k == 'addr:housename' and v == u'Calle Santa Mar\xeda n\xba8, 48005 Bilbao':
+					print ET.tostring(elem)
+
 				if k in cases_to_check:
 					if categories['all_capital'].match(v):
 						categories_set[k]['all_capital'].add(v)
@@ -124,7 +128,7 @@ def type_of_street(filename):
 
 	for event, elem in ET.iterparse(filename):
 		if elem.tag in ['node', 'way']:
-			for tag in elem.iter('tag'):
+			for tag in elem.findall('tag'):
 				k = tag.attrib['k']
 				v = tag.attrib['v']
 				if k == 'addr:street':
@@ -135,6 +139,26 @@ def type_of_street(filename):
 	print types
 	pprint.pprint(types)
 	return list(types)
+
+def print_fails(filename):
+	for event, elem in ET.iterparse(filename):
+		if elem.tag in ['node', 'way']:
+			for tag in elem.findall('tag'):
+				k = tag.attrib['k']
+				v = tag.attrib['v']
+
+				if (k == u'Torreón del castillo de los Salazar') or \
+				   (k == 'N') or \
+				   (k == 'addr:housenumber' and v == '46, BIS') or \
+				   (k == 'addr:housenumber' and v == u'8, 1\xba D') or \
+				   (k == 'addr:postcode' and v == 'Larrabetzu') or \
+				   (k == 'addr:postcode' and v == '48001;48002;48003;48004;48005;48006;48007;48008;48009;48010;48011;48012;48013;48014;48015') or \
+				   (k == 'addr:housename' and v == '1') or \
+				   (k == 'addr:housename' and v == 'Calle Galicia') or \
+				   (k == 'addr:housename' and v == u'Calle Santa Mar\xeda n\xba8, 48005 Bilbao') or \
+				   (k == 'addr:housename' and v == 'Calle de Ercilla, 37-39, 48011 Bilbao, Vizcaya') or \
+				   (k == 'addr:city' and v == 'villasana de Mena'):
+				   print ET.tostring(elem)
 
 mapping_street_types = {
 	'ACCESO': 'Acceso',
@@ -159,16 +183,16 @@ mapping_street_types = {
 }
 
 
-'''
-addr_keys = get_keys_address(filename)
-get_sets_depending_on_address_keys(filename, addr_keys)
+#addr_keys = get_keys_address(filename)
+#get_sets_depending_on_address_keys(filename, addr_keys)
 
-weird_values = analyze_numeric_fields_of_address2(filename)
-print weird_values
+#weird_values = analyze_numeric_fields_of_address2(filename)
+#print weird_values
 
 
-check_text_values(filename, cases_to_check=['addr:street'])
-'''
+#check_text_values(filename, cases_to_check=['addr:housename'])
 
-types_of_street = type_of_street(filename)
 
+#types_of_street = type_of_street(filename)
+
+print_fails(filename)

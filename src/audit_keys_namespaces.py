@@ -8,18 +8,19 @@ import sys
 filename = '../data/file.osm'
 
 # Count tags that have namespaces within its keys
-def check_namespaces(filename):
+def get_tags_with_namespace(filename):
 
 	tags_with_namespace = {}
 
 	for event, elem in ET.iterparse(filename):
 		if elem.tag in ['node', 'way']:
-			for tag in elem.iter('tag'):
+			for tag in elem.findall('tag'):
 				k = tag.attrib['k']
 				if key_has_namespace(k):
 					sum_to_dict(tags_with_namespace, k)
 					#sum_to_dict(tags_with_namespace, k.split(':')[0])
 	pprint.pprint(tags_with_namespace)
+	return tags_with_namespace.keys()
 
 # Get tags that have both namespace and not namespace (within the same element)
 # filename: osm (XML) file to analyze
@@ -32,11 +33,11 @@ def get_tags_with_namespace_and_without(filename, showelements=False, elementtos
 		if elem.tag in ['node', 'way']:
 			with_namespace = set()
 			without_namespace = set()
-			for tag in elem.iter('tag'):
+			for tag in elem.findall('tag'):
 				k = tag.attrib['k']
 				if key_has_namespace(k):
 					with_namespace.add(k.split(':')[0])
-			for tag in elem.iter('tag'):
+			for tag in elem.findall('tag'):
 				k = tag.attrib['k']
 				if key_has_namespace(k):
 					pass
@@ -65,7 +66,8 @@ def key_has_namespace(key):
 	return lower_colon.match(key) or lower_colon2.match(key)
 
 def main():
-	#check_namespaces(filename)
-	print get_tags_with_namespace_and_without(filename, showelements=True, elementtoshow=sys.argv[1])
+	#print get_tags_with_namespace(filename)
+	#print get_tags_with_namespace_and_without(filename, showelements=True, elementtoshow=sys.argv[1])
+	print get_tags_with_namespace_and_without(filename)
 
 main()

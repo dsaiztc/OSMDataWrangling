@@ -38,7 +38,7 @@ def count_tags(filename):
 	tag_dict = {}
 	for event, elem in ET.iterparse(filename):
 		if elem.tag in ['node', 'way']:
-			for tag in elem.iter('tag'):
+			for tag in elem.findall('tag'):
 				if tag.attrib['k'] in tag_dict:
 					tag_dict[tag.attrib['k']] += 1
 				else:
@@ -125,7 +125,7 @@ def type_of_keys_and_tags_by_element(filename, elements=['node', 'way']):
 
 	for event, elem in ET.iterparse(filename):
 		if elem.tag in elements:
-			for tag_elem in elem.iter():
+			for tag_elem in elem.findall():
 				if tag_elem.tag == 'tag':
 					k = tag_elem.attrib['k']
 					if lower.match(k):
@@ -159,7 +159,7 @@ def check_weird_keys(filename):
 				 'way': ['FIXME', 'N', u'Torre\xf3n del castillo de los Salazar', 'fuel:']}
 	for event, elem in ET.iterparse(filename):
 		if elem.tag in weirdkeys.keys():
-			for elem_tag in elem.iter():
+			for elem_tag in elem.findall():
 				if elem_tag.tag == 'tag':
 					k = elem_tag.attrib['k']
 					if k in weirdkeys[elem.tag]:

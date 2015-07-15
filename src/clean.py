@@ -2,16 +2,22 @@
 # -*- coding: utf-8 -*-
 
 import xml.etree.cElementTree as ET
+import json
+import os
+import re
 
 def clean_file(filename):
-	for event, elem in ET.iterparse():
+	json_list_name = 'cleaned'
+	os.remove('../data/' + json_list_name + '.jsonl')
+	for event, elem in ET.iterparse(filename):
 		if elem.tag in ['node', 'way']:
-			clean_element(elem)
+			json_elem = clean_element(elem)
+			add_to_json_list(json_elem, json_list_name)
 
 def clean_element(element):
 	dict_element = {
 		'id': element.attrib['id'],
-		'visible': element.attrib['visible'],
+		'visible': get_attribute(element, 'visible'),
 		'created': {
 			'user': element.attrib['user'],
 		    'uid': element.attrib['uid'],
@@ -31,26 +37,39 @@ def clean_element(element):
 	# Tags
 	clean_tags(element, dict_element)
 
+	return dict_element
+
+# For some reason there are attribute that coulb not be present inside an Element
+def get_attribute(element, attribute):
+	if attribute in element.attrib.keys():
+		return element.attrib[attribute]
+	else:
+		return None
+
 
 def add_pos(element, dict_element):
 	dict_element['pos'] = [float(element.attrib['lon']), float(element.attrib['lat'])]
 
 def add_node_references(element, dict_element):
 	dict_element['node_refs'] = []
-	for node_ref in element.iter('nd'):
+	for node_ref in element.findall('nd'):
 		ref = int(node_ref.attrib['ref'])
-		dict_element['node_refs'].add()
+		dict_element['node_refs'].append(ref)
 
 def clean_tags(element, dict_element):
 
+	# TODO - Mapping street names
+
+	fix_elements(element)
 	fix_namespaces(element)
 
-	for tag in element.iter('tag'):
-
-		fix_tag(tag)
+	for tag in element.findall('tag'):
 
 		k = tag.attrib['k']
 		v = tag.attrib['v']
+
+		if k == 'addr:street':
+			map_street_type(tag)
 
 		if len(k.split(':')) == 1: 
 			# no namespace
@@ -59,13 +78,58 @@ def clean_tags(element, dict_element):
 			# with namespace
 			clean_tag_with_namespace(tag, dict_element)
 
+# Fix those elements we've seen that are wrong in some way
+def fix_elements(element):
+	element_id = element.attrib['id']
+	if element_id == '1247189817':
+		tag = element.find("tag[@k='addr:housename']")
+		tag.attrib['addr:housename'] = 'Bar Irrintzi'
+		element.append(ET.Element('tag', {'k': 'addr:street', 'v': 'Calle Santa María'}))
+		element.append(ET.Element('tag', {'k': 'addr:housenumber', 'v': '8'}))
+		element.append(ET.Element('tag', {'k': 'addr:postcode', 'v': '48005'}))
+		element.append(ET.Element('tag', {'k': 'addr:city', 'v': 'Bilbao'}))
+	elif element_id == '2251334795':
+		tag = element.find("tag[@k='addr:housename']")
+		tag.attrib['k'] = 'addr:housenumber'
+	elif element_id == '2497160669':
+		tag = element.find("tag[@k='addr:housenumber']")
+		tag.attrib['v'] = '8'
+		element.append(ET.Element('tag', {'k': 'addr:housenumber', 'v': '8'}))
+		element.append(ET.Element('tag', {'k': 'addr:floor', 'v': '1'}))
+		element.append(ET.Element('tag', {'k': 'addr:door', 'v': 'D'}))
+		element.append(ET.Element('tag', {'k': 'addr:full', 'v': 'Avenida Bilbao 8, 1º D'}))
+	elif element_id == '2666662355':
+		tag = element.find("tag[@k='addr:housenumber']")
+		tag.attrib['v'] = '46 BIS'
+	elif element_id == '2685469617':
+		tag = element.find("tag[@k='addr:housename']")
+		tag.attrib['k'] = 'addr:full'
+		element.append(ET.Element('tag', {'k': 'club', 'v': 'charity'}))
+	elif element_id == '233784177':
+		tag = element.find("tag[@v='water']")
+		element.remove(tag)
+		element.append(ET.Element('tag', {'k': 'name', 'v': 'Torreón del castillo de los Salazar'}))
+	elif element_id == '244038482':
+		tag = element.find("tag[@k='addr:housename']")
+		tag.attrib['k'] = 'addr:street'
+	elif element_id == '297172400':
+		tag = element.find("tag[@k='N']")
+		tag.attrib['k'] = 'addr:street'
+	elif element_id == '299032372':
+		tag = element.find("tag[@k='addr:city']")
+		tag.attrib['v'] = 'Villasana de Mena'
+	elif element_id == '334490093':
+		tag = element.find("tag[@k='addr:street']")
+		tag.attrib['k'] = 'addr:full'
+
+# Add a sublevel default for those tags that have both namespace and not namespace (like if we had 'addr' and 'addr:street')
 def fix_namespaces(element):
 
 	# level1:level2:level3
 	namespaces_set_l1 = set()
 	namespaces_set_l2 = set()
 
-	for tag in element.iter('tag'):
+	for tag in element.findall('tag'):
 		k = tag.attrib['k']
 		kl = k.split(':')
 		if len(kl) == 2:
@@ -73,7 +137,7 @@ def fix_namespaces(element):
 		elif len(kl) == 3:
 			namespaces_set_l2.add(kl[1])
 
-	for tag in element.iter('tag'):
+	for tag in element.findall('tag'):
 		k = tag.attrib['k']
 		kl = k.split(':')
 		if len(kl) == 1:
@@ -83,14 +147,37 @@ def fix_namespaces(element):
 			if kl[1] in namespaces_set_l2:
 				tag.attrib['k'] = k + ':default'
 
-def fix_tag(tag):
-	# keys we've seen that have to be cleaned
-	if tag.attrib['k'] == 'Torreón del castillo de los Salazar':
-		tag.attrib['k'] = 'name'
-		tag.attrib['v'] = 'Torreón del castillo de los Salazar'
-	elif tag.attrib['k'] == 'N':
-		tag.attrib['k'] = 'name'
-		tag.attrib['v'] = 'Calle Real'
+def map_street_type(tag):
+
+	mapping_street_types = {
+		'ACCESO': 'Acceso',
+		'AU': u'Autovía',
+		'AUTOVIA': u'Autovía',
+		'AVENIDA': 'Avenida',
+		'BARRIO': 'Barrio',
+		'B\xba': 'Barrio',
+		'C/': 'Calle',
+		'CALLE': 'Calle',
+		'CARRETERA': 'Carretera',
+		'CL': 'Calle',
+		'CR': 'Carretera',
+		'CRTA.': 'Carretera',
+		'CTRA.N-623,BURGOS-SANTANDER': 'Carretera N-623, Burgos-Santander',
+		'Carretera/Carrera': 'Carretera',
+		'Kalea': 'kalea',
+		'PLAZA': 'Plaza',
+		'POLIGONO': u'Polígono',
+		'Urbanizaci\xc3\xb3n': u'Urbanización',
+		'Urbanizaci\xf3n': u'Urbanización'
+	}
+
+	v = tag.attrib['v']
+
+	for key, value in mapping_street_types.iteritems():
+		if re.search(key, v):
+			tag.attrib['v'] = re.sub(key, value, v)
+			break
+
 
 # Nest attributes and fix errors
 def clean_tag_with_namespace(tag, dict_element):
@@ -100,7 +187,6 @@ def clean_tag_with_namespace(tag, dict_element):
 	kl = k.split(':')
 
 	if len(kl) == 2:
-		fix_level1_tag(tag)
 		if kl[0] not in dict_element.keys():
 			dict_element[kl[0]] = {}
 		dict_element[kl[0]][kl[1]] = v
@@ -112,23 +198,21 @@ def clean_tag_with_namespace(tag, dict_element):
 			dict_element[kl[0]][kl[1]] = {}
 		dict_element[kl[0]][kl[1]][kl[2]] = v
 
-def fix_level1_tag(tag):
-	kl = tag.attrib['k'].split(':')
+# Save dictionary as JSON on '../data/'
+def save_json(my_dict, json_name):
+	with open('../data/' + json_name + '.json', 'w') as json_file:
+		json.dump(my_dict, json_file)
 
-	if kl[0] == 'addr':
-		if kl[1] == 'housenumber':
-			if tag.attrib['v'] == '46, BIS':
-				tag.attrib['v'] = '46 BIS'
-			elif tag.attrib['v'] == '8, 1\xba D':
-				tag.attrib['v'] = '8'
-		elif kl[1] == 'postcode':
-			if tag.attrib['v'] == 'Larrabetzu':
-				tag.attrib['v'] = '48195'
-			elif tag.attrib['v'] == '48001;48002;48003;48004;48005;48006;48007;48008;48009;48010;48011;48012;48013;48014;48015':
-				tag.attrib['v'] = '48001;48002;48003;48004;48005;48006;48007;48008;48009;48010;48011;48012;48013;48014;48015'.split(';')
-		elif kl[1] == 'housename':
-			if tag.attrib['v'] == '1':
-				
+# Save a list of dicionaries on a JSON Lines on '../data/'
+def save_json_list(my_dict_list, json_name):
+	with open('../data/' + json_name + '.jsonl', 'w') as json_file:
+		for json_doc in my_dict_list:
+			json_file.write(json.dumps(json_doc) + '\n')
+
+def add_to_json_list(my_dict, json_name):
+	with open('../data/' + json_name + '.jsonl', 'a') as json_file:
+		json.dump(my_dict, json_file)
+		json_file.write('\n')
 
 
 # Cleaning script

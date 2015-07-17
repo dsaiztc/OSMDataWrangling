@@ -20,7 +20,7 @@ And the resulting `osm` (or `xml`) data is stored on `/data/file.osm`, which is 
 
 ## 3. Structure of the OSM file
 
-In the [OSM XML page](http://wiki.openstreetmap.org/wiki/OSM_XML) we can see the format of the XML document, which is basically a list of instances of their data primitives or [Elements](http://wiki.openstreetmap.org/wiki/Elements): [nodes](http://wiki.openstreetmap.org/wiki/Node), [ways](http://wiki.openstreetmap.org/wiki/Way) and [relations](http://wiki.openstreetmap.org/wiki/Relation). 
+In the [OSM XML page](http://wiki.openstreetmap.org/wiki/OSM_XML) we can see the format of the XML document, which is basically a list of instances of their *data primitives* or [Elements](http://wiki.openstreetmap.org/wiki/Elements): [nodes](http://wiki.openstreetmap.org/wiki/Node), [ways](http://wiki.openstreetmap.org/wiki/Way) and [relations](http://wiki.openstreetmap.org/wiki/Relation). 
 
 ### 3.1 Elements
 
@@ -100,7 +100,7 @@ to
 {
 'type': 'node',
 ...
-'address': {
+'addr': {
 	'street': 'some_street',
     'postcode': 'some_postcode',
     'housenumber': 'some_housenumber'
@@ -241,6 +241,8 @@ After examining all these values, I would conclude that the most reasonable appr
 
 ### 4.2 Analyzing the *values*
 
+> This analysis has been performed with different functions within the [audit_values_basic.py](./src/audit_values_basic.py) script.
+
 Now it is time to analyze all the *values* within the *tags* of the different *Elements*. Given the large amount of different attributes, we are going to focus in those that could be checked in some way, like the [address](http://wiki.openstreetmap.org/wiki/Key:addr) different fields.
 
 The address *keys* we have follow a distribution:
@@ -309,4 +311,287 @@ mapping_street_types = {
 In this case we are going to correct the street types that are in capital letters, but only the street type, not the rest of the string.
 
 ## 5. Cleaning the data
+
+As we have seen before, the final goal is to clean and store the OSM *Elements*, converting them into JSON documents and get them inside a MongoDB database. 
+
+Once we have identified the main problems we want to solve in the original data, we will create a procedure to clean it. The tasks we are going to do are the following:
+
+- [x] Nest *common* attributes (except *id* and *visible*) into a *creation* attribute.
+- [x] Create a *type* attribute (*node* or *way*).
+- [x] Create array with position for *nodes*.
+- [x] Create array for node references on *ways*.
+- [x] Re-organize attributes, creating nested elements for *namespaces*.
+- [x] Clean *tags* according the analysis we have made:
+      - [x] Errors in *keys*.
+      - [x] Errors in *values*.
+      - [x] Street types correction (ex. from `C/` to `Calle`).
+      - [ ] Others (like correct all-caps nomenclature).
+- [x] Create a JSON object for each *Element* (*node* or *way*) in the original document.
+- [x] Import all JSON objects into a MongoDB database.
+
+This entire procedure (except the final step) can be found in the script [clean.py](./src/clean.py), which creates a [*cleaned.jsonl*](http://jsonlines.org/) file that we could import later to our MongoDB database using the [*mongoimport* tool](http://docs.mongodb.org/manual/reference/program/mongoimport/) as follows:
+
+``` shell
+mongoimport -d osm -c merindades --file cleaned.jsonl
+```
+
+Where *osm* is the database name and *merindades* is the collection.
+
+## 6. Data Overview
+
+### 6.1 Documents
+
+As we have seen before, we have the original OSM xml document and a cleaned version in JSON format. These documents have the following approximate size:
+
+``` 
+data.osm .......... 355 MB
+cleaned.jsonl ..... 430 MB
+```
+
+### 6.2 Database
+
+#### 6.2.1 General Overview
+
+Now that we have collected the data within a MongoDB database is time to run some queries to extract some insights about the OSM data. We are going to use the [*mongo* shell](http://docs.mongodb.org/v2.2/mongo/), a interactive JavaScript shell.
+
+- Total number of *Elements*:
+
+``` javascript
+> db.merindades.find().count()
+1855383
+```
+
+- Total number of *Nodes*:
+
+``` javascript
+> db.merindades.find({'type': 'node'}).count()
+1758132
+```
+
+- Total number of *Elements* that have a *null* value inside the **visible** attribute:
+
+``` javascript
+> db.merindades.aggregate([{'$group': {'_id': '$visible', 'count': {'$sum': 1}}}])
+{ "_id" : null, "count" : 1855383 }
+```
+
+In our [clean.py](./src/clean.py) script we created an attribute *visible* for those cases where it would not exist, associating a *null* value (instead of a *true* or *false*). As we can see here, there is not any *Element* that has a *visible* attribute in the original OSM file, so all the documents we have in the database have a *null* value within the *visible* attribute.
+
+- Number of **places** aggregated by type:
+
+``` javascript
+> db.merindades.aggregate([{'$match': {'place': {'$exists': 1}}}, {'$group': {'_id': '$place', 'count': {'$sum': 1}}}, {'$sort': {'count': -1}}])
+{ "_id" : "locality", "count" : 12872 }
+{ "_id" : "hamlet", "count" : 1076 }
+{ "_id" : "village", "count" : 654 }
+{ "_id" : "neighbourhood", "count" : 206 }
+{ "_id" : "isolated_dwelling", "count" : 83 }
+{ "_id" : "suburb", "count" : 75 }
+{ "_id" : "farm", "count" : 8 }
+{ "_id" : "town", "count" : 8 }
+{ "_id" : "yes", "count" : 3 }
+{ "_id" : "La Coteruca", "count" : 1 }
+{ "_id" : "state", "count" : 1 }
+{ "_id" : "city", "count" : 1 }
+```
+
+Here we can see some values that should probably not be there, like **yes** or **La Coretuca**. We should have audit these error in previous stages of the process or update the documents in the database.
+
+- Number of unique users:
+
+``` javascript
+> db.merindades.distinct('created.user').length
+553
+```
+
+- Top 5 users by contributions:
+
+``` javascript
+> db.merindades.aggregate([{'$group': {'_id': '$created.user', 'count': {'$sum': 1}}}, {'$sort': {'count': -1}}, {'$limit': 5}])
+{ "_id" : "cronoser", "count" : 415038 }
+{ "_id" : "Emilio Gomez", "count" : 280561 }
+{ "_id" : "sanchi", "count" : 170710 }
+{ "_id" : "jonbergor", "count" : 123627 }
+{ "_id" : "www_dorono_tk", "count" : 65890 }
+```
+
+As we could expect here, the contributions are highly skewed, the contribution percentage of these 5 is: *cronoser* 22.37%, *Emilio Gomez* 15.12%, *sanchi* 9.2%, *jonbergor* 6.67% and *www_dorono_tk* 3.55%. Moreover, these 5 users, that represent the **0.9% of the total users, have edited 56.91%** of the *Elements*.
+
+- Top 10 users by contribution:
+
+``` javascript
+> db.merindades.aggregate([{'$group': {'_id': '$created.user', 'count': {'$sum': 1}}}, {'$sort': {'count': -1}}, {'$limit': 10}, {'$group': {'_id': 'top_10_users', 'count': {'$sum': '$count'}}}])
+{ "_id" : "top_10_users", "count" : 1304382 }
+```
+
+Here we can see that the top 10 users by contribution have edited the 70.3% of the *Elements* in our database. That is, **1.8% of the total users have edited 70.3%** of the *Elements*.
+
+- Percentage of the *Elements* mapped by the top 5% users by contribution:
+
+``` javascript
+> db.merindades.aggregate([{'$group': {'_id': '$created.user', 'count': {'$sum': 1}}}, {'$sort': {'count': -1}}, {'$limit': 27}, {'$group': {'_id': 'top_10_users', 'count': {'$sum': '$count'}}}])
+{ "_id" : "top_10_users", "count" : 1660270 }
+```
+
+The **89.48% of the *Elements* have been mapped by the 5% of the users**.
+
+- Top 10 types of **amenities**:
+
+``` javascript
+> db.merindades.aggregate([{'$match': {'amenity': {'$exists': 1}}}, {'$group': {'_id': '$amenity', 'count': {'$sum': 1}}}, {'$sort': {'count': -1}}, {'$limit': 10}])
+
+{ "_id" : "place_of_worship", "count" : 1052 }
+{ "_id" : "drinking_water", "count" : 868 }
+{ "_id" : "parking", "count" : 526 }
+{ "_id" : "bar", "count" : 336 }
+{ "_id" : "restaurant", "count" : 273 }
+{ "_id" : "bank", "count" : 210 }
+{ "_id" : "school", "count" : 209 }
+{ "_id" : "cafe", "count" : 140 }
+{ "_id" : "pharmacy", "count" : 124 }
+{ "_id" : "fuel", "count" : 122 }
+```
+
+No surprise here, due to the fact that there is a church in almost every single village in Spain, no matter the size of it.
+
+- Grouping the *places of worship* by **religion**:
+
+``` javascript
+> db.merindades.aggregate([{'$match': {'amenity': {'$exists': 1}, 'amenity': 'place_of_worship'}}, {'$group': {'_id': '$religion', 'count': {'$sum': 1}}}, {'$sort': {'count': -1}}, {'$limit': 5}])
+{ "_id" : "christian", "count" : 1035 }
+{ "_id" : null, "count" : 16 }
+{ "_id" : "muslim", "count" : 1 }
+```
+
+Also it would be likely that those that have no **religion** attribute (that appear as *null*) are also referring to *christian* religion.
+
+#### 6.2.2 Geospational Queries
+
+As we said before, adding a position attribute to the *Nodes* allows us to query in terms of distance to a desired point. First of all we need to create the **geospational index**, in our *mongo* console:
+
+``` javascript
+> db.merindades.ensureIndex({'pos': '2d'})
+{
+	"createdCollectionAutomatically" : false,
+	"numIndexesBefore" : 1,
+	"numIndexesAfter" : 2,
+	"ok" : 1
+}
+```
+
+We are going to use the *find* method to make our queries. Here we can use the [$near](http://docs.mongodb.org/manual/reference/operator/query/near/) operator, that returns the documents from nearest to farthest. We can also specify the maximum distance with the [$maxDistance](http://docs.mongodb.org/manual/reference/operator/query/maxDistance/) operator. Because we are specifying a [2d index](http://docs.mongodb.org/manual/core/2d/) with the *longitude* and *latitude* in our **pos** attribute in degrees, we need to specify the distance in the same units. Then, if we want to query within a distance in kilometers, we have to convert it by the following equation:
+
+``` 
+distance [º] = (distance [km] / earth_radius [km] ) * ( 180 º / π rad ) 
+```
+
+with and earth radius of 6378.1 km
+
+Here I am going to take the location reference of my hometown, *Medina de Pomar*, which has the following structure in the corresponding document within our database:
+
+``` javascript
+> db.merindades.find({'name': 'Medina de Pomar', 'place': 'town'}).pretty()
+{
+	"_id" : ObjectId("55a690cbb4170bc4a83c30f1"),
+	"admin_level" : "8",
+	"name" : "Medina de Pomar",
+	"created" : {
+		"user" : "cronoser",
+		"uid" : "461005",
+		"timestamp" : "2015-03-24T15:24:11Z",
+		"version" : "7",
+		"changeset" : "29705846"
+	},
+	"ref" : {
+		"ine" : "09209001100"
+	},
+	"wikipedia" : "es:Medina_de_Pomar",
+	"pos" : [
+		-3.4861165,
+		42.9322093
+	],
+	"ele" : "607",
+	"visible" : null,
+	"place" : "town",
+	"source" : {
+		"ele" : "MDT5",
+		"default" : "Instituto Geográfico Nacional",
+		"date" : "2011-06",
+		"name" : "Nomenclátor Geográfico de Municipios y Entidades de Población",
+		"file" : "http://centrodedescargas.cnig.es/CentroDescargas/equipamiento/BD_Municipios-Entidades.zip"
+	},
+	"capital" : "8",
+	"population" : {
+		"default" : "6225",
+		"date" : "2011"
+	},
+	"type" : "node",
+	"id" : "492410974",
+	"is_in" : {
+		"default" : "Burgos, Castilla y León, Spain, Europe",
+		"country" : "Spain",
+		"municipality" : "Medina de Pomar",
+		"country_code" : "ES",
+		"province_code" : "09"
+	}
+}
+```
+
+We just need to specify the location coordinates along with the *$near* command to get the values we want.
+
+- Number of *Elements* within a distance of **5 km**:
+
+``` javascript
+> db.merindades.find({'pos': {'$near': [ -3.4861165, 42.9322093 ], '$maxDistance': (5 * (180/(Math.PI * 6378.1)))}}).count()
+50047
+```
+
+- Number of *Amenities* within a distance of **5 km**:
+
+``` javascript
+> db.merindades.find({'pos': {'$near': [ -3.4861165, 42.9322093 ], '$maxDistance': (5 * (180/(Math.PI * 6378.1)))}, 'amenity': {'$exists': 1}}).count()
+143
+```
+
+- Number of *bars*, *cafes* and *restaurants* within a distance of **5 km**.
+
+``` javascript
+> db.merindades.find({'pos': {'$near': [ -3.4861165, 42.9322093 ], '$maxDistance': (5 * (180/(Math.PI * 6378.1)))}, 'amenity': {'$in': ['bar', 'cafe', 'restaurant']}}).count()
+53
+```
+
+I was always impressed by the amount of this kind of places in my hometown, considering that it has an approximate population of 6.000 habitants.
+
+- Number of *schools*, *places of worship*, *pharmacies*, *banks* and *fuel stations* within a distance of **5 km**:
+
+``` javascript
+> db.merindades.find({'pos': {'$near': [ -3.4861165, 42.9322093 ], '$maxDistance': (5 * (180/(Math.PI * 6378.1)))}, 'amenity': 'school'}).count()
+1
+
+> db.merindades.find({'pos': {'$near': [ -3.4861165, 42.9322093 ], '$maxDistance': (5 * (180/(Math.PI * 6378.1)))}, 'amenity': 'place_of_worship'}).count()
+1
+
+> db.merindades.find({'pos': {'$near': [ -3.4861165, 42.9322093 ], '$maxDistance': (5 * (180/(Math.PI * 6378.1)))}, 'amenity': 'bank'}).count()
+6
+
+> db.merindades.find({'pos': {'$near': [ -3.4861165, 42.9322093 ], '$maxDistance': (5 * (180/(Math.PI * 6378.1)))}, 'amenity': 'pharmacy'}).count()
+4
+
+> db.merindades.find({'pos': {'$near': [ -3.4861165, 42.9322093 ], '$maxDistance': (5 * (180/(Math.PI * 6378.1)))}, 'amenity': 'fuel'}).count()
+2
+```
+
+- Number of *places of worships* and *bars, cafes and restaurants* within a distance of **25 km**:
+
+``` javascript
+> db.merindades.find({'pos': {'$near': [ -3.4861165, 42.9322093 ], '$minDistance': 0, '$maxDistance': (25 * (180/(Math.PI * 6578.1)))}, 'amenity': 'place_of_worship'}).count()  
+21
+
+> db.merindades.find({'pos': {'$near': [ -3.4861165, 42.9322093 ], '$minDistance': 0, '$maxDistance': (25 * (180/(Math.PI * 6578.1)))}, 'amenity': {'$in': ['bar', 'cafe', 'restaurant']}}).count()
+155
+```
+
+If we increase the distance from the center of the town, we reach other small villages where each one of them would probably have its own church and probably several *bars* (at least in the bigger ones).
+
+## 7. Conclusion
 

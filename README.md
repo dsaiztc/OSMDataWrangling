@@ -595,3 +595,13 @@ If we increase the distance from the center of the town, we reach other small vi
 
 ## 7. Conclusion
 
+Through all the stages of this project we have seen that we can find a wide variety or errors within the OSM data. We have centered our effort in analyzing only some of the fields, but there is definitely more work to do if we want a completely cleaned data. We have found errors in both *keys* and *values* of the different *tags*, and we have not only corrected them but also fixed some issues with the data, like creating various fields from one originally wrong (in case of *streets* that included also the number of the house and even the door letter). 
+
+Despite our effort, the huge amount of different kind of *tags* make the cleaning process almost impossible if we do not center our efforts in the fields that we are interested in analyzing (like in this case the *address*). 
+
+The OSM edition process is too much open to interpretations and in some cases it is not clear what rule to apply while tagging an item. It seems that it is too complex to know all the procedures to apply or they are too complex for an average user to spent time reading the documentation before start editing (what leads in errors about *what-each-tag-means*).
+
+I also find particularly tricky to work with the absolutely freedom allowed while adding new tags. I think that a more-structured approach could benefit the overall experience while working with OSM data.
+
+Apart from that, I think is incredible the power that a community could have while creating things together. Open Street Maps is without any doubt a great source of information and also it is probably the most recently actualized data (which depends on the activity of their users). 
+

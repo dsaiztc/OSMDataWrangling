@@ -10,13 +10,15 @@ The goal of this project is to choose any area of the world in [https://www.ope
 
 ## 2. Obtaining the data
 
-To obtain the data I have made a query to `http://overpass-api.de/query_form.html` after searching for *Las Merindades*, which is the region where my hometown belongs to. The query is the following:
+To obtain the data I have made a query to `http://overpass-api.de/query_form.html` after searching for [*Las Merindades*](https://www.openstreetmap.org/relation/4718122#map=10/42.9408/-3.4854), which is the region where my hometown, [*Medina de Pomar*](https://en.wikipedia.org/wiki/Medina_de_Pomar), belongs to. The query is the following:
 
 ``` 
 (node(42.5966, -4.2339, 43.2832, -2.7370);<;);out meta;
 ```
 
 And the resulting `osm` (or `xml`) data is stored on `/data/file.osm`, which is a *355,3 MB* file (that can be downloaded also [here](https://www.dropbox.com/s/9d8io7q19lkq2b1/merindades.osm?dl=0)). A *sample* of that file (created with the [sample.py](./src/sample.py) script) can be accessed [here](./data/sample.osm).
+
+![Maps of Las Merindades (Spain)](./images/map.png)
 
 ## 3. Structure of the OSM file
 
@@ -317,16 +319,26 @@ As we have seen before, the final goal is to clean and store the OSM *Elements*,
 Once we have identified the main problems we want to solve in the original data, we will create a procedure to clean it. The tasks we are going to do are the following:
 
 - [x] Nest *common* attributes (except *id* and *visible*) into a *creation* attribute.
+      
 - [x] Create a *type* attribute (*node* or *way*).
+      
 - [x] Create array with position for *nodes*.
+      
 - [x] Create array for node references on *ways*.
+      
 - [x] Re-organize attributes, creating nested elements for *namespaces*.
+      
 - [x] Clean *tags* according the analysis we have made:
-      - [x] Errors in *keys*.
-      - [x] Errors in *values*.
-      - [x] Street types correction (ex. from `C/` to `Calle`).
-      - [ ] Others (like correct all-caps nomenclature).
+      
+      ``` 
+        - [x] Errors in *keys*.
+        - [x] Errors in *values*.
+        - [x] Street types correction (ex. from `C/` to `Calle`).
+        - [ ] Others (like correct all-caps nomenclature).
+      ```
+      
 - [x] Create a JSON object for each *Element* (*node* or *way*) in the original document.
+      
 - [x] Import all JSON objects into a MongoDB database.
 
 This entire procedure (except the final step) can be found in the script [clean.py](./src/clean.py), which creates a [*cleaned.jsonl*](http://jsonlines.org/) file that we could import later to our MongoDB database using the [*mongoimport* tool](http://docs.mongodb.org/manual/reference/program/mongoimport/) as follows:
@@ -604,4 +616,3 @@ The OSM edition process is too much open to interpretations and in some cases it
 I also find particularly tricky to work with the absolutely freedom allowed while adding new tags. I think that a more-structured approach could benefit the overall experience while working with OSM data.
 
 Apart from that, I think is incredible the power that a community could have while creating things together. Open Street Maps is without any doubt a great source of information and also it is probably the most recently actualized data (which depends on the activity of their users). 
-

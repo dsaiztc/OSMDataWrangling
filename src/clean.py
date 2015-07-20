@@ -131,7 +131,9 @@ def fix_elements(element):
 		tag = element.find("tag[@k='addr:street']")
 		tag.attrib['k'] = 'addr:full'
 
-# Add a sublevel default for those tags that have both namespace and not namespace (like if we had 'addr' and 'addr:street')
+# Add a sublevel default for those tags that have both namespace and not namespace 
+#    For example: if we have 'addr' and 'addr:street' then we create 'addr:default' 
+#    (so then we can nest both inside one attribute in the JSON document)
 def fix_namespaces(element):
 
 	# level1:level2:level3
@@ -195,11 +197,12 @@ def clean_tag_with_namespace(tag, dict_element):
 	v = tag.attrib['v']
 	kl = k.split(':')
 
+	# keys with one namespace (one prefix)
 	if len(kl) == 2:
 		if kl[0] not in dict_element.keys():
 			dict_element[kl[0]] = {}
 		dict_element[kl[0]][kl[1]] = v
-
+	# keys with two namespaces (two prefix)
 	elif len(kl) == 3:
 		if kl[0] not in dict_element.keys():
 			dict_element[kl[0]] = {}

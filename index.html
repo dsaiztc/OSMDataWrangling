@@ -25,7 +25,7 @@
 <blockquote>
 <p>This project has been developed in order to pursue the <a href="https://www.udacity.com/course/data-analyst-nanodegree--nd002">Data Analyst Nanodegree</a> offered by Udacity. Specifically, the project aims to use the knowledges acquired in the second course of this Nanodegree: <a href="https://www.udacity.com/course/ud032-nd">Data Wrangling with MongoDB</a>.</p>
 
-<p>The <em>Project Report</em> about the data wrangling can be found <a href="https://github.com/dsaiztc/OSMDataWrangling/blob/master/ProjectReport.md">here</a>.</p>
+<p>The <em>Project Report</em> about the data wrangling can be found <a href="https://github.com/dsaiztc/OSMDataWrangling/blob/gh-pages/ProjectReport.html">here</a>.</p>
 </blockquote>
 
 <h2>
@@ -41,9 +41,9 @@
 <pre><code>(node(42.5966, -4.2339, 43.2832, -2.7370);&lt;;);out meta;
 </code></pre>
 
-<p>And the resulting <code>osm</code> (or <code>xml</code>) data is stored on <code>/data/file.osm</code>, which is a <em>355,3 MB</em> file (that can be downloaded also <a href="https://www.dropbox.com/s/9d8io7q19lkq2b1/merindades.osm?dl=0">here</a>). A <em>sample</em> of that file (created with the <a href="./src/sample.py">sample.py</a> script) can be accessed <a href="./data/sample.osm">here</a>.</p>
+<p>And the resulting <code>osm</code> (or <code>xml</code>) data is stored on <code>/data/file.osm</code>, which is a <em>355,3 MB</em> file (that can be downloaded also <a href="https://www.dropbox.com/s/9d8io7q19lkq2b1/merindades.osm?dl=0">here</a>). A <em>sample</em> of that file (created with the <a href="https://github.com/dsaiztc/OSMDataWrangling/blob/master/src/sample.py">sample.py</a> script) can be accessed <a href="https://github.com/dsaiztc/OSMDataWrangling/blob/master/data/sample.osm">here</a>.</p>
 
-<p><img src="./images/map.png" alt="Maps of Las Merindades (Spain)"></p>
+<p><img src="https://github.com/dsaiztc/OSMDataWrangling/blob/master/images/map.png" alt="Maps of Las Merindades (Spain)"></p>
 
 <h2>
 <a id="3-structure-of-the-osm-file" class="anchor" href="#3-structure-of-the-osm-file" aria-hidden="true"><span class="octicon octicon-link"></span></a>3. Structure of the OSM file</h2>
@@ -146,7 +146,7 @@
 <a id="411-structure-applying-regular-expressions" class="anchor" href="#411-structure-applying-regular-expressions" aria-hidden="true"><span class="octicon octicon-link"></span></a>4.1.1 Structure (applying <em>regular expressions</em>)</h4>
 
 <blockquote>
-<p>This analysis has been performed with different functions within the <a href="./src/audit_keys_basic.py">audit_keys_basic.py</a> script.</p>
+<p>This analysis has been performed with different functions within the <a href="https://github.com/dsaiztc/OSMDataWrangling/blob/master/src/audit_keys_basic.py">audit_keys_basic.py</a> script.</p>
 </blockquote>
 
 <p>If we take a look at the <em>tags</em> presented in the document, classifying their <em>key</em> depending on the kind of <em>Element</em> (<em>node</em> or <em>way</em>) and also the structure (if all the characters are correct or if it has a namespace, for example) we get the following structure:</p>
@@ -215,7 +215,7 @@
 <a id="412-namespaces-and-aggregating-attributes" class="anchor" href="#412-namespaces-and-aggregating-attributes" aria-hidden="true"><span class="octicon octicon-link"></span></a>4.1.2 <em>Namespaces</em> and aggregating attributes</h4>
 
 <blockquote>
-<p>This analysis has been performed with different functions within the <a href="./src/audit_keys_namespaces.py">audit_keys_namespaces.py</a> script.</p>
+<p>This analysis has been performed with different functions within the <a href="https://github.com/dsaiztc/OSMDataWrangling/blob/master/src/audit_keys_namespaces.py">audit_keys_namespaces.py</a> script.</p>
 </blockquote>
 
 <p>As we stated before, the <em>tags</em> that belong to a <em>namespace</em> are going to be nested within attributes in our JSON document. However, there are some cases where we have a specific <em>key</em> and also other <em>keys</em> with that same <em>key</em> as prefix, for example:</p>
@@ -263,7 +263,7 @@
 </h3>
 
 <blockquote>
-<p>This analysis has been performed with different functions within the <a href="./src/audit_values_basic.py">audit_values_basic.py</a> script.</p>
+<p>This analysis has been performed with different functions within the <a href="https://github.com/dsaiztc/OSMDataWrangling/blob/master/src/audit_values_basic.py">audit_values_basic.py</a> script.</p>
 </blockquote>
 
 <p>Now it is time to analyze all the <em>values</em> within the <em>tags</em> of the different <em>Elements</em>. Given the large amount of different attributes, we are going to focus in those that could be checked in some way, like the <a href="http://wiki.openstreetmap.org/wiki/Key:addr">address</a> different fields.</p>
@@ -355,7 +355,7 @@
 <li>[x] Import all JSON objects into a MongoDB database.</li>
 </ul>
 
-<p>This entire procedure (except the final step) can be found in the script <a href="./src/clean.py">clean.py</a>, which creates a <a href="http://jsonlines.org/"><em>cleaned.jsonl</em></a> file that we could import later to our MongoDB database using the <a href="http://docs.mongodb.org/manual/reference/program/mongoimport/"><em>mongoimport</em> tool</a> as follows:</p>
+<p>This entire procedure (except the final step) can be found in the script <a href="https://github.com/dsaiztc/OSMDataWrangling/blob/master/src/clean.py">clean.py</a>, which creates a <a href="http://jsonlines.org/"><em>cleaned.jsonl</em></a> file that we could import later to our MongoDB database using the <a href="http://docs.mongodb.org/manual/reference/program/mongoimport/"><em>mongoimport</em> tool</a> as follows:</p>
 
 <div class="highlight highlight-shell"><pre>mongoimport -d osm -c merindades --file cleaned.jsonl</pre></div>
 
@@ -402,7 +402,7 @@ cleaned.jsonl ..... 430 MB
 <div class="highlight highlight-javascript"><pre><span class="pl-k">&gt;</span> db.merindades.aggregate([{<span class="pl-s"><span class="pl-pds">'</span>$group<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>_id<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>$visible<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>count<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>$sum<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">1</span>}}}])
 { <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">null</span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">1855383</span> }</pre></div>
 
-<p>In our <a href="./src/clean.py">clean.py</a> script we created an attribute <em>visible</em> for those cases where it would not exist, associating a <em>null</em> value (instead of a <em>true</em> or <em>false</em>). As we can see here, there is not any <em>Element</em> that has a <em>visible</em> attribute in the original OSM file, so all the documents we have in the database have a <em>null</em> value within the <em>visible</em> attribute.</p>
+<p>In our <a href="https://github.com/dsaiztc/OSMDataWrangling/blob/master/src/clean.py">clean.py</a> script we created an attribute <em>visible</em> for those cases where it would not exist, associating a <em>null</em> value (instead of a <em>true</em> or <em>false</em>). As we can see here, there is not any <em>Element</em> that has a <em>visible</em> attribute in the original OSM file, so all the documents we have in the database have a <em>null</em> value within the <em>visible</em> attribute.</p>
 
 <ul>
 <li>Number of <strong>places</strong> aggregated by type:</li>

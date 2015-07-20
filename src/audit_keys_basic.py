@@ -190,7 +190,7 @@ def main():
 	#type_of_keys(filename)
 	#unique_users(filename)
 	#type_of_keys_and_tags(filename)
-	type_of_keys_and_tags_by_element(filename)
+	#type_of_keys_and_tags_by_element(filename)
 	#check_weird_keys(filename)
 	print ''
 

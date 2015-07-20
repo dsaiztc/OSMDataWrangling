@@ -140,6 +140,25 @@ def type_of_street(filename):
 	pprint.pprint(types)
 	return list(types)
 
+def type_of_street_dict(filename):
+	types = {}
+
+	kalea = re.compile(r'(k|K)alea$')
+
+	for event, elem in ET.iterparse(filename):
+		if elem.tag in ['node', 'way']:
+			for tag in elem.findall('tag'):
+				k = tag.attrib['k']
+				v = tag.attrib['v']
+				if k == 'addr:street':
+					if kalea.search(v):
+						sum_to_dict(types, v.split()[-1])
+					else:
+						sum_to_dict(types, v.split()[0])
+	print types
+	pprint.pprint(types)
+	return list(types)
+
 def print_fails(filename):
 	for event, elem in ET.iterparse(filename):
 		if elem.tag in ['node', 'way']:
@@ -194,5 +213,6 @@ mapping_street_types = {
 
 
 #types_of_street = type_of_street(filename)
+type_of_street_dict(filename)
 
-print_fails(filename)
+#print_fails(filename)

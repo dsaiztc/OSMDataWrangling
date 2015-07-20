@@ -66,11 +66,11 @@ def type_of_keys(filename):
 	for event, elem in ET.iterparse(filename):
 		if elem.tag == 'tag':
 			k = elem.attrib['k']
-			if lower.match(k):
+			if lower.search(k):
 				keys['lower'] += 1
-			elif lower_colon.match(k):
+			elif lower_colon.search(k):
 				keys['lower_colon'] += 1
-			elif problemchars.match(k):
+			elif problemchars.search(k):
 				keys['problemchars'] += 1
 			else:
 				if k in other:
@@ -93,13 +93,13 @@ def type_of_keys_and_tags(filename):
 	for event, elem in ET.iterparse(filename):
 		if elem.tag == 'tag':
 			k = elem.attrib['k']
-			if lower.match(k):
+			if lower.search(k):
 				keys_num['lower'] += 1
 				sum_to_dict(keys['lower'], k)
-			elif lower_colon.match(k):
+			elif lower_colon.search(k):
 				keys_num['lower_colon'] += 1
 				sum_to_dict(keys['lower_colon'], k)
-			elif problemchars.match(k):
+			elif problemchars.search(k):
 				keys_num['problemchars'] += 1
 				sum_to_dict(keys['problemchars'], k)
 			else:
@@ -125,24 +125,23 @@ def type_of_keys_and_tags_by_element(filename, elements=['node', 'way']):
 
 	for event, elem in ET.iterparse(filename):
 		if elem.tag in elements:
-			for tag_elem in elem.findall():
-				if tag_elem.tag == 'tag':
-					k = tag_elem.attrib['k']
-					if lower.match(k):
-						elements_dict_num[elem.tag]['lower'] += 1
-						sum_to_dict(elements_dict[elem.tag]['lower'], k)
-					elif lower_colon.match(k):
-						elements_dict_num[elem.tag]['lower_colon'] += 1
-						sum_to_dict(elements_dict[elem.tag]['lower_colon'], k)
-					elif lower_colon2.match(k):
-						elements_dict_num[elem.tag]['lower_colon2'] += 1
-						sum_to_dict(elements_dict[elem.tag]['lower_colon2'], k)
-					elif problemchars.match(k):
-						elements_dict_num[elem.tag]['problemchars'] += 1
-						sum_to_dict(elements_dict[elem.tag]['problemchars'], k)
-					else:
-						elements_dict_num[elem.tag]['other'] += 1
-						sum_to_dict(elements_dict[elem.tag]['other'], k)
+			for tag_elem in elem.findall('tag'):
+				k = tag_elem.attrib['k']
+				if lower.search(k):
+					elements_dict_num[elem.tag]['lower'] += 1
+					sum_to_dict(elements_dict[elem.tag]['lower'], k)
+				elif lower_colon.search(k):
+					elements_dict_num[elem.tag]['lower_colon'] += 1
+					sum_to_dict(elements_dict[elem.tag]['lower_colon'], k)
+				elif lower_colon2.search(k):
+					elements_dict_num[elem.tag]['lower_colon2'] += 1
+					sum_to_dict(elements_dict[elem.tag]['lower_colon2'], k)
+				elif problemchars.search(k):
+					elements_dict_num[elem.tag]['problemchars'] += 1
+					sum_to_dict(elements_dict[elem.tag]['problemchars'], k)
+				else:
+					elements_dict_num[elem.tag]['other'] += 1
+					sum_to_dict(elements_dict[elem.tag]['other'], k)
 
 	print 'Patterns on tags:\n'
 	pprint.pprint(elements_dict_num)
@@ -159,13 +158,12 @@ def check_weird_keys(filename):
 				 'way': ['FIXME', 'N', u'Torre\xf3n del castillo de los Salazar', 'fuel:']}
 	for event, elem in ET.iterparse(filename):
 		if elem.tag in weirdkeys.keys():
-			for elem_tag in elem.findall():
-				if elem_tag.tag == 'tag':
-					k = elem_tag.attrib['k']
-					if k in weirdkeys[elem.tag]:
-						print ET.tostring(elem)
-						print k, elem_tag.attrib['v']
-						print ''
+			for elem_tag in elem.findall('tag'):
+				k = elem_tag.attrib['k']
+				if k in weirdkeys[elem.tag]:
+					print ET.tostring(elem)
+					print k, elem_tag.attrib['v']
+					print ''
 
 # If the my_key exists in my_dict, add 1 to the value; create it with value 1 otherwise
 def sum_to_dict(my_dict, my_key):
@@ -192,7 +190,7 @@ def main():
 	#type_of_keys(filename)
 	#unique_users(filename)
 	#type_of_keys_and_tags(filename)
-	#type_of_keys_and_tags_by_element(filename)
+	type_of_keys_and_tags_by_element(filename)
 	#check_weird_keys(filename)
 	print ''
 

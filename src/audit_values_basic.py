@@ -49,9 +49,9 @@ def analyze_numeric_fields_of_address(filename, fields=['addr:housenumber', 'add
 				k = tag.attrib['k']
 				v = tag.attrib['v']
 				if k in fields:
-					if whole_number.match(v):
+					if whole_number.search(v):
 						numeric_fields[k]['whole_number'] += 1
-					elif have_number.match(v):
+					elif have_number.search(v):
 						numeric_fields[k]['have_number'] += 1
 						weird_fields[k]['have_number'].add(v)
 					else:
@@ -76,9 +76,9 @@ def analyze_numeric_fields_of_address2(filename, fields=['addr:housenumber', 'ad
 				k = tag.attrib['k']
 				v = tag.attrib['v']
 				if k in fields:
-					if whole_number.match(v):
+					if whole_number.search(v):
 						numeric_fields[k]['whole_number'] += 1
-					elif have_number.match(v):
+					elif have_number.search(v):
 						numeric_fields[k]['have_number'] += 1
 						weird_fields[k]['have_number'].add(v)
 					else:
@@ -110,11 +110,11 @@ def check_text_values(filename, cases_to_check=['addr:city', 'addr:housename', '
 					print ET.tostring(elem)
 
 				if k in cases_to_check:
-					if categories['all_capital'].match(v):
+					if categories['all_capital'].search(v):
 						categories_set[k]['all_capital'].add(v)
-					elif categories['all_small'].match(v):
+					elif categories['all_small'].search(v):
 						categories_set[k]['all_small'].add(v)
-					elif categories['unicode_text'].match(v) is None:
+					elif categories['unicode_text'].search(v) is None:
 						categories_set[k]['unicode_text'].add(v)
 					else:
 						categories_set[k]['other'].add(v)

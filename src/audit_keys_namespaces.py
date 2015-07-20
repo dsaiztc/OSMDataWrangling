@@ -63,7 +63,7 @@ def key_has_namespace(key):
 	lower_colon = re.compile(r'^([a-z]|_)*:([a-z]|_)*$')
 	lower_colon2 = re.compile(r'^([a-z]|_)*:([a-z]|_)*:([a-z]|_)*$')
 
-	return lower_colon.match(key) or lower_colon2.match(key)
+	return lower_colon.search(key) or lower_colon2.search(key)
 
 def main():
 	#print get_tags_with_namespace(filename)

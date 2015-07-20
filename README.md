@@ -36,7 +36,7 @@ Furthermore, each one of those *categories* has its own attributes:
 
 So our interest will be on the first two kind of *Elements*: *nodes* and *ways*. The majority of the *common attributes* make a reference to the *creation* process of that element. So in our *document-oriented* model we could aggregate those values within an attribute of our document. Also, due to the fact that there is going to be a unique collection for all documents, we should differentiate between *nodes* and *ways*.
 
-``` json
+``` javascript
 {
 ...
 'type': 'node OR way',
@@ -54,7 +54,7 @@ So our interest will be on the first two kind of *Elements*: *nodes* and *ways*.
 
 In the case of *nodes*, we could add a *position* attribute. MongoDB offers a number of [indexes and query](http://docs.mongodb.org/manual/applications/geospatial-indexes/) mechanisms to handle geospatial information, that allows us to create [2d Geospatial Indexes](http://docs.mongodb.org/v2.2/core/geospatial-indexes/) if we storage the GPS data with the following format:
 
-``` json
+``` javascript
 'pos' : [ longitude, latitude ]
 ```
 
@@ -74,7 +74,7 @@ From
 
 to
 
-``` json
+``` javascript
 {
 ...
 'node_refs': [ 'ref1', 'ref2', ... ]
@@ -98,7 +98,7 @@ From
 
 to
 
-``` json
+``` javascript
 {
 'type': 'node',
 ...
@@ -124,7 +124,7 @@ As we have seen before, each *tag* has a *key/value pair* referring a specific c
 
 If we take a look at the *tags* presented in the document, classifying their *key* depending on the kind of *Element* (*node* or *way*) and also the structure (if all the characters are correct or if it has a namespace, for example) we get the following structure:
 
-``` json
+``` javascript
 {'node': {'lower': 89359,
           'lower_colon': 53673,
           'lower_colon2': 171,
@@ -143,7 +143,7 @@ As we said before, we can nest the keys with namespaces within attributes of our
 
 Regarding the ***other*** category and the problematic characters, we should check what kind of *tags* we have. Following the last procedure, we are going to count how many different *keys* we have for those *tags*:
 
-``` json
+``` javascript
 {'node': {'lower': { ... },
  		 'lower_colon': { ... },
          'lower_colon2': { ... },
@@ -230,7 +230,7 @@ Nevertheless, each individual case could be different. In the case of the [**nam
 
 After examining all these values, I would conclude that the most reasonable approach is to create a **default** value for the *tag* without *namespace* and add the rest with their corresponding *namespace*. In the example of the **atm**:
 
-``` json
+``` javascript
 {
 ...
 'atm': {
@@ -248,7 +248,7 @@ Now it is time to analyze all the *values* within the *tags* of the different *E
 
 The address *keys* we have follow a distribution:
 
-``` json
+``` javascript
 {'addr:city': 1673,
  'addr:country': 937,
  'addr:country_code': 15,
@@ -271,7 +271,7 @@ Regarding the numeric values, we have **addr:housenumber** and **addr:postcode**
 
 Attending the **housenumber** values, we can see different patterns: with only numbers, with numbers and a capital letter, with a number and a word *bis* (which means that there are two buildings with the same number; it appears close to the number, separated by a space, with capital and non capital letters), with a range of numbers (as a list and also as an interval) and others:
 
-``` json
+``` javascript
 ['SN(B)', 'SN(D)', '7 - 43', '2 - 36', '46, BIS', '2, 4 y 7', u'8, 1\xba D', '2, 4', '6, 8', '12, 14', '13-15', 'SN(A)', '15-17', '2019.', '1-3', 'SN(C)', 'SN(E)', '4, 6', 'km 508', '4, 6, 8, 10', 's/n', '3, 5, 7, 9', '12-14', '8, 10', '37-39', '12-38']
 ```
 
@@ -285,7 +285,7 @@ Regarding the three cases left, we can see different patterns like strings with 
 
 We are going to center our efforts analyzing the **street** value, looking mainly for unexpected street types or abbreviations and creating a *mapping* function to correct those values. That mapping can be viewed in the following dictionary:
 
-``` json
+``` javascript
 mapping_street_types = {
 	'ACCESO': 'Acceso',
 	'AU': 'Autovía',
@@ -596,7 +596,7 @@ If we increase the distance from the center of the town, we reach other small vi
 
 ## 7. Conclusion
 
-Through all the stages of this project we have seen that we can find a wide variety or errors within the OSM data. We have centered our effort in analyzing only some of the fields, but there is definitely more work to do if we want a completely cleaned data. We have found errors in both *keys* and *values* of the different *tags*, and we have not only corrected them but also fixed some issues with the data, like creating various fields from one originally wrong (in case of *streets* that included also the number of the house and even the door letter). 
+Through all the stages of this project we have seen that we can find a wide variety or errors within the OSM data. We have centered our effort in analyzing only some of the fields, but **there is definitely more work to do if we want a completely cleaned data**. We have found errors in both *keys* and *values* of the different *tags*, and we have not only corrected them but also fixed some issues with the data, like creating various fields from one originally wrong (in case of *streets* that included also the number of the house and even the door letter). 
 
 Despite our effort, the huge amount of different kind of *tags* make the cleaning process almost impossible if we do not center our efforts in the fields that we are interested in analyzing (like in this case the *address*). 
 

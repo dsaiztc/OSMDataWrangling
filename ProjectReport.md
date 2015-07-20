@@ -32,7 +32,7 @@ To audit the *keys* I have checked their structure applying *regular expressions
   
 - Namespaces: several cases where there are both namespaces and not namespaces for a specific *key*. For example, in **population** it is possible to have both **key=population** and **key=population:date**. The OSM standard allows this kind of naming, but if I want the attributes with namespaces nested within their *parent* (or *prefix*) then I have to create a *default* namespace for cases like this, having a **key=population:default** and a **key=population:date**. By this way the resulting JSON document will be:
   
-- ``` json
+- ``` javascript
   {...
   'population': {
   	'default': population_value,
@@ -48,7 +48,7 @@ Given the large amount of different attributes, I have focused in those that cou
 
 Attending the **housenumber** values, there are different patterns: with only numbers, with numbers and a capital letter, with a number and a word *bis* (which means that there are two buildings with the same number; it appears close to the number, separated by a space, with capital and non capital letters), with a range of numbers (as a list and also as an interval) and others:
 
-``` json
+``` javascript
 ['SN(B)', 'SN(D)', '7 - 43', '2 - 36', '46, BIS', '2, 4 y 7', u'8, 1\xba D', '2, 4', '6, 8', '12, 14', '13-15', 'SN(A)', '15-17', '2019.', '1-3', 'SN(C)', 'SN(E)', '4, 6', 'km 508', '4, 6, 8, 10', 's/n', '3, 5, 7, 9', '12-14', '8, 10', '37-39', '12-38']
 ```
 

@@ -9,11 +9,18 @@ import re
 # Clean the entire osm file (for 'Las Merindades' zone)
 def clean_file(filename):
 	json_list_name = 'cleaned'
-	os.remove('../data/' + json_list_name + '.jsonl')
+	remove_json_list(json_list_name)
 	for event, elem in ET.iterparse(filename):
 		if elem.tag in ['node', 'way']:
 			json_elem = clean_element(elem)
 			add_to_json_list(json_elem, json_list_name)
+
+# Remove previous version of the JSON file if they exists
+def remove_json_list(json_list_name):
+	try:
+		os.remove('../data/' + json_list_name + '.jsonl')
+	except OSError:
+		pass
 
 # Clean and correct an Element (Way or Node) within the osm document
 def clean_element(element):

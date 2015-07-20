@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 import re
 import xml.etree.cElementTree as ET
 from audit_keys_basic import sum_to_dict
@@ -59,6 +62,7 @@ def get_tags_with_namespace_and_without(filename, showelements=False, elementtos
 	#pprint.pprint(tags_with_namespace_and_without)
 	return tags_with_namespace_and_without.keys()
 
+# Check if a key of a tag has a namespace (one or two prefixes)
 def key_has_namespace(key):
 	lower_colon = re.compile(r'^([a-z]|_)*:([a-z]|_)*$')
 	lower_colon2 = re.compile(r'^([a-z]|_)*:([a-z]|_)*:([a-z]|_)*$')

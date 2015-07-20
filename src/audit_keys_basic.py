@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 import xml.etree.cElementTree as ET
 import pprint
 import sys
@@ -183,6 +186,7 @@ def save_json_list(my_dict_list, json_name):
 		for json_doc in my_dict_list:
 			json_file.write(json.dumps(json_doc) + '\n')
 
+# Call one or more methods above. Note that some of the functions could be used in other scripts
 def main():
 	#printhead(filename, 500)
 	#count_elements(filename)

@@ -6,6 +6,7 @@ import json
 import os
 import re
 
+# Clean the entire osm file (for 'Las Merindades' zone)
 def clean_file(filename):
 	json_list_name = 'cleaned'
 	os.remove('../data/' + json_list_name + '.jsonl')
@@ -14,6 +15,7 @@ def clean_file(filename):
 			json_elem = clean_element(elem)
 			add_to_json_list(json_elem, json_list_name)
 
+# Clean and correct an Element (Way or Node) within the osm document
 def clean_element(element):
 	dict_element = {
 		'id': element.attrib['id'],
@@ -46,19 +48,19 @@ def get_attribute(element, attribute):
 	else:
 		return None
 
-
+# Add the longitude-latitude position as an array for future geospational queries
 def add_pos(element, dict_element):
 	dict_element['pos'] = [float(element.attrib['lon']), float(element.attrib['lat'])]
 
+# Add node references within an array (for Ways Element only)
 def add_node_references(element, dict_element):
 	dict_element['node_refs'] = []
 	for node_ref in element.findall('nd'):
 		ref = int(node_ref.attrib['ref'])
 		dict_element['node_refs'].append(ref)
 
+# Clean and correct tags within an element
 def clean_tags(element, dict_element):
-
-	# TODO - Mapping street names
 
 	fix_elements(element)
 	fix_namespaces(element)
@@ -147,6 +149,7 @@ def fix_namespaces(element):
 			if kl[1] in namespaces_set_l2:
 				tag.attrib['k'] = k + ':default'
 
+# Maps street types to the corrected ones
 def map_street_type(tag):
 
 	mapping_street_types = {
@@ -178,7 +181,6 @@ def map_street_type(tag):
 			tag.attrib['v'] = re.sub(key, value, v)
 			break
 
-
 # Nest attributes and fix errors
 def clean_tag_with_namespace(tag, dict_element):
 	
@@ -209,6 +211,7 @@ def save_json_list(my_dict_list, json_name):
 		for json_doc in my_dict_list:
 			json_file.write(json.dumps(json_doc) + '\n')
 
+# Add JSON to a JSON Lines document on '.../data/'
 def add_to_json_list(my_dict, json_name):
 	with open('../data/' + json_name + '.jsonl', 'a') as json_file:
 		json.dump(my_dict, json_file)

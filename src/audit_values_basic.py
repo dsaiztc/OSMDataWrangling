@@ -23,6 +23,7 @@ def get_keys_address(filename):
 	pprint.pprint(address_dict)
 	return address_dict.keys()
 
+# Look for different values for the tag's key within addr_keys
 def get_sets_depending_on_address_keys(filename, addr_keys):
 	dict_addr_keys = {k: set() for k in addr_keys}
 
@@ -33,6 +34,7 @@ def get_sets_depending_on_address_keys(filename, addr_keys):
 				if 'addr' in k:
 					dict_addr_keys[k].add(tag.attrib['v'])
 	pprint.pprint(dict_addr_keys)
+	return dict_addr_keys
 
 # Numeric fields for address distribution
 def analyze_numeric_fields_of_address(filename, fields=['addr:housenumber', 'addr:postcode']):
@@ -89,6 +91,7 @@ def analyze_numeric_fields_of_address2(filename, fields=['addr:housenumber', 'ad
 	print weird_fields
 	return list(weird_fields)
 
+# Check the value for different tag's keys in cases_to_check and print them
 def check_text_values(filename, cases_to_check=['addr:city', 'addr:housename', 'addr:street']):
 	categories = {
 		'all_capital': re.compile(r'^([A-Z]| )+$'),
@@ -121,6 +124,7 @@ def check_text_values(filename, cases_to_check=['addr:city', 'addr:housename', '
 
 	pprint.pprint(categories_set)
 
+# Prints and returns a list of (possible) different types of street (k=addr:street)
 def type_of_street(filename):
 	types = set()
 
@@ -140,6 +144,7 @@ def type_of_street(filename):
 	pprint.pprint(types)
 	return list(types)
 
+# Prints the distribution and returns a list of (possible) different types of street (k=addr:street)
 def type_of_street_dict(filename):
 	types = {}
 
@@ -157,8 +162,9 @@ def type_of_street_dict(filename):
 						sum_to_dict(types, v.split()[0])
 	print types
 	pprint.pprint(types)
-	return list(types)
+	return list(types.keys())
 
+# Print wrong values complete-element detected in previous stages for the given file
 def print_fails(filename):
 	for event, elem in ET.iterparse(filename):
 		if elem.tag in ['node', 'way']:
@@ -179,28 +185,6 @@ def print_fails(filename):
 				   (k == 'addr:city' and v == 'villasana de Mena'):
 				   print ET.tostring(elem)
 
-mapping_street_types = {
-	'ACCESO': 'Acceso',
-	'AU': 'Autovía',
-	'AUTOVIA': 'Autovía',
-	'AVENIDA': 'Avenida',
-	'BARRIO': 'Barrio',
-	'B\xba': 'Barrio',
-	'C/': 'Calle',
-	'CALLE': 'Calle',
-	'CARRETERA': 'Carretera',
-	'CL': 'Calle',
-	'CR': 'Carretera',
-	'CRTA.': 'Carretera',
-	'CTRA.N-623,BURGOS-SANTANDER': 'Carretera N-623, Burgos-Santander',
-	'Carretera/Carrera': 'Carretera',
-	'Kalea': 'kalea',
-	'PLAZA': 'Plaza',
-	'POLIGONO': 'Polígono',
-	'Urbanizaci\xc3\xb3n': 'Urbanización',
-	'Urbanizaci\xf3n': 'Urbanización'
-}
-
 
 #addr_keys = get_keys_address(filename)
 #get_sets_depending_on_address_keys(filename, addr_keys)
@@ -213,6 +197,6 @@ mapping_street_types = {
 
 
 #types_of_street = type_of_street(filename)
-type_of_street_dict(filename)
+#type_of_street_dict(filename)
 
 #print_fails(filename)

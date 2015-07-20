@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="UTF-8">
+    <title>Osmdatawrangling by dsaiztc</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
+  </head>
+  <body>
+    <section class="page-header">
+      <h1 class="project-name">Osmdatawrangling</h1>
+      <h2 class="project-tagline">OpenStreetMaps Data Wrangling.</h2>
+      <a href="https://github.com/dsaiztc/OSMDataWrangling" class="btn">View on GitHub</a>
+      <a href="https://github.com/dsaiztc/OSMDataWrangling/zipball/master" class="btn">Download .zip</a>
+      <a href="https://github.com/dsaiztc/OSMDataWrangling/tarball/master" class="btn">Download .tar.gz</a>
+    </section>
+
+    <section class="main-content">
+      <h1>
+<a id="openstreetmaps-data-wrangling" class="anchor" href="#openstreetmaps-data-wrangling" aria-hidden="true"><span class="octicon octicon-link"></span></a>OpenStreetMaps Data Wrangling</h1>
+
+<blockquote>
+<p>This project has been developed in order to pursue the <a href="https://www.udacity.com/course/data-analyst-nanodegree--nd002">Data Analyst Nanodegree</a> offered by Udacity. Specifically, the project aims to use the knowledges acquired in the second course of this Nanodegree: <a href="https://www.udacity.com/course/ud032-nd">Data Wrangling with MongoDB</a>.</p>
+
+<p>The <em>Project Report</em> about the data wrangling can be found <a href="https://github.com/dsaiztc/OSMDataWrangling/blob/master/ProjectReport.md">here</a>.</p>
+</blockquote>
+
+<h2>
+<a id="1-introduction" class="anchor" href="#1-introduction" aria-hidden="true"><span class="octicon octicon-link"></span></a>1. Introduction</h2>
+
+<p>The goal of this project is to choose any area of the world in <a href="https://www.openstreetmap.org/">https://www.openstreetmap.org</a> and use data munging techniques, such as assessing the quality of the data for validity, accuracy, completeness, consistency and uniformity, to clean the <em>OpenStreetMap</em> data for a part of the world, converting it from XML to JSON format, importing the clean file into a <em>MongoDB</em> database and run some queries against it.</p>
+
+<h2>
+<a id="2-obtaining-the-data" class="anchor" href="#2-obtaining-the-data" aria-hidden="true"><span class="octicon octicon-link"></span></a>2. Obtaining the data</h2>
+
+<p>To obtain the data I have made a query to <code>http://overpass-api.de/query_form.html</code> after searching for <a href="https://www.openstreetmap.org/relation/4718122#map=10/42.9408/-3.4854"><em>Las Merindades</em></a>, which is the region where my hometown, <a href="https://en.wikipedia.org/wiki/Medina_de_Pomar"><em>Medina de Pomar</em></a>, belongs to. The query is the following:</p>
+
+<pre><code>(node(42.5966, -4.2339, 43.2832, -2.7370);&lt;;);out meta;
+</code></pre>
+
+<p>And the resulting <code>osm</code> (or <code>xml</code>) data is stored on <code>/data/file.osm</code>, which is a <em>355,3 MB</em> file (that can be downloaded also <a href="https://www.dropbox.com/s/9d8io7q19lkq2b1/merindades.osm?dl=0">here</a>). A <em>sample</em> of that file (created with the <a href="./src/sample.py">sample.py</a> script) can be accessed <a href="./data/sample.osm">here</a>.</p>
+
+<p><img src="./images/map.png" alt="Maps of Las Merindades (Spain)"></p>
+
+<h2>
+<a id="3-structure-of-the-osm-file" class="anchor" href="#3-structure-of-the-osm-file" aria-hidden="true"><span class="octicon octicon-link"></span></a>3. Structure of the OSM file</h2>
+
+<p>In the <a href="http://wiki.openstreetmap.org/wiki/OSM_XML">OSM XML page</a> we can see the format of the XML document, which is basically a list of instances of their <em>data primitives</em> or <a href="http://wiki.openstreetmap.org/wiki/Elements">Elements</a>: <a href="http://wiki.openstreetmap.org/wiki/Node">nodes</a>, <a href="http://wiki.openstreetmap.org/wiki/Way">ways</a> and <a href="http://wiki.openstreetmap.org/wiki/Relation">relations</a>. </p>
+
+<h3>
+<a id="31-elements" class="anchor" href="#31-elements" aria-hidden="true"><span class="octicon octicon-link"></span></a>3.1 Elements</h3>
+
+<p>Those <em>Elements</em> have several <a href="http://wiki.openstreetmap.org/wiki/Elements#Common_attributes">common attributes</a>: <strong>id</strong> (identify the element within a type -node, way or relation-), <strong>user</strong> (display name of the  user), <strong>uid</strong> (numeric user id), <strong>timestamp</strong> (time of the last modification), <strong>visible</strong> (whether the object is deleted or not in the database), <strong>version</strong> (edit version of the object) and <strong>changeset</strong> (the <a href="http://wiki.openstreetmap.org/wiki/Changeset">changeset</a> in which the object was created or updated).</p>
+
+<p>Furthermore, each one of those <em>categories</em> has its own attributes:</p>
+
+<ul>
+<li>
+<em>Nodes</em>: <strong>lat</strong> (latitude coordinates in degrees), <strong>lon</strong> (longitude coordinates in degrees) and a bunch of different <a href="http://wiki.openstreetmap.org/wiki/Tags">tags</a> (a set of key/value pairs).</li>
+<li>
+<em>Ways</em>: an ordered list of <em>Nodes</em> (as XML elements with <strong>nd</strong> tag and an attribute named <em>ref</em> with a reference to the <em>node id</em>). Normally it has also at least one <a href="http://wiki.openstreetmap.org/wiki/Tags">tag</a>.</li>
+<li>
+<em>Relations</em>: one or more <a href="http://wiki.openstreetmap.org/wiki/Tags">tags</a> and also an ordered list of one or more <em>nodes</em>, <em>ways</em> and <em>relations</em> as members.</li>
+</ul>
+
+<p>So our interest will be on the first two kind of <em>Elements</em>: <em>nodes</em> and <em>ways</em>. The majority of the <em>common attributes</em> make a reference to the <em>creation</em> process of that element. So in our <em>document-oriented</em> model we could aggregate those values within an attribute of our document. Also, due to the fact that there is going to be a unique collection for all documents, we should differentiate between <em>nodes</em> and <em>ways</em>.</p>
+
+<div class="highlight highlight-javascript"><pre>{
+...
+<span class="pl-s"><span class="pl-pds">'</span>type<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>node OR way<span class="pl-pds">'</span></span>,
+<span class="pl-s"><span class="pl-pds">'</span>id<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>some_id<span class="pl-pds">'</span></span>,
+<span class="pl-s"><span class="pl-pds">'</span>visible<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>true OR false<span class="pl-pds">'</span></span>,
+<span class="pl-s"><span class="pl-pds">'</span>created<span class="pl-pds">'</span></span><span class="pl-k">:</span> {
+    <span class="pl-s"><span class="pl-pds">'</span>user<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>some_user<span class="pl-pds">'</span></span>,
+    <span class="pl-s"><span class="pl-pds">'</span>uid<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>some_uid<span class="pl-pds">'</span></span>,
+    <span class="pl-s"><span class="pl-pds">'</span>timestamp<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>some_timestamp<span class="pl-pds">'</span></span>,
+    <span class="pl-s"><span class="pl-pds">'</span>version<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>some_version<span class="pl-pds">'</span></span>,
+    <span class="pl-s"><span class="pl-pds">'</span>changeset<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>some_changeset<span class="pl-pds">'</span></span>
+    }
+}</pre></div>
+
+<p>In the case of <em>nodes</em>, we could add a <em>position</em> attribute. MongoDB offers a number of <a href="http://docs.mongodb.org/manual/applications/geospatial-indexes/">indexes and query</a> mechanisms to handle geospatial information, that allows us to create <a href="http://docs.mongodb.org/v2.2/core/geospatial-indexes/">2d Geospatial Indexes</a> if we storage the GPS data with the following format:</p>
+
+<div class="highlight highlight-javascript"><pre><span class="pl-s"><span class="pl-pds">'</span>pos<span class="pl-pds">'</span></span> <span class="pl-k">:</span> [ longitude, latitude ]</pre></div>
+
+<p><em>NOTE:</em> the name of the attribute could be whatever we want, <em>pos</em> is an option but it could be <em>loc</em> or <em>position</em>. In our case the name of this attribute will be <em>pos</em> (for no specific reason).</p>
+
+<p>In the case of <em>ways</em>, we could create an attribute for storing all the <em>nd</em> values within an array:</p>
+
+<p>From</p>
+
+<div class="highlight highlight-xml"><pre>&lt;<span class="pl-ent">way</span> ...&gt;
+    &lt;<span class="pl-ent">nd</span> <span class="pl-e">ref</span>=<span class="pl-s"><span class="pl-pds">'</span>ref1<span class="pl-pds">'</span></span>/&gt;
+    &lt;<span class="pl-ent">nd</span> <span class="pl-e">ref</span>=<span class="pl-s"><span class="pl-pds">'</span>ref2<span class="pl-pds">'</span></span>/&gt;
+    ...
+&lt;/<span class="pl-ent">way</span>&gt;</pre></div>
+
+<p>to</p>
+
+<div class="highlight highlight-javascript"><pre>{
+...
+<span class="pl-s"><span class="pl-pds">'</span>node_refs<span class="pl-pds">'</span></span><span class="pl-k">:</span> [ <span class="pl-s"><span class="pl-pds">'</span>ref1<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>ref2<span class="pl-pds">'</span></span>, ... ]
+}</pre></div>
+
+<h3>
+<a id="32-tags" class="anchor" href="#32-tags" aria-hidden="true"><span class="octicon octicon-link"></span></a>3.2 Tags</h3>
+
+<p>As we have seen before, a <a href="http://wiki.openstreetmap.org/wiki/Tags">tag</a> is a key/value pair that describes a specific feature of a data <em>Element</em>. In our transformation to JSON-like documents we should include all these tags as attributes. However, there are some of this <em>tags</em> whose <em>key</em> can be modified to include a <a href="http://wiki.openstreetmap.org/wiki/Namespace">namespace</a> (a prefix, infix or suffix using a colon <code>:</code> as separator). One example of these <em>namespaces</em> could be the <em>tags</em> that contain part of an address, which have a prefix <em>addr</em>. In these cases we could create an attribute in our document that aggregate all different characteristics for a given prefix, which in the case of an address could be:</p>
+
+<p>From</p>
+
+<div class="highlight highlight-xml"><pre>&lt;<span class="pl-ent">node</span> ...&gt;
+  ...
+  &lt;<span class="pl-ent">tag</span> <span class="pl-e">k</span>=<span class="pl-s"><span class="pl-pds">'</span>addr:street<span class="pl-pds">'</span></span> <span class="pl-e">v</span>=<span class="pl-s"><span class="pl-pds">'</span>some_street<span class="pl-pds">'</span></span>/&gt;
+  &lt;<span class="pl-ent">tag</span> <span class="pl-e">k</span>=<span class="pl-s"><span class="pl-pds">'</span>addr:postcode<span class="pl-pds">'</span></span> <span class="pl-e">v</span>=<span class="pl-s"><span class="pl-pds">'</span>some_postcode<span class="pl-pds">'</span></span>/&gt;
+  &lt;<span class="pl-ent">tag</span> <span class="pl-e">k</span>=<span class="pl-s"><span class="pl-pds">'</span>addr:housenumber<span class="pl-pds">'</span></span> <span class="pl-e">v</span>=<span class="pl-s"><span class="pl-pds">'</span>some_housenumber<span class="pl-pds">'</span></span>/&gt;
+&lt;/<span class="pl-ent">node</span>&gt;</pre></div>
+
+<p>to</p>
+
+<div class="highlight highlight-javascript"><pre>{
+<span class="pl-s"><span class="pl-pds">'</span>type<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>node<span class="pl-pds">'</span></span>,
+...
+<span class="pl-s"><span class="pl-pds">'</span>addr<span class="pl-pds">'</span></span><span class="pl-k">:</span> {
+    <span class="pl-s"><span class="pl-pds">'</span>street<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>some_street<span class="pl-pds">'</span></span>,
+    <span class="pl-s"><span class="pl-pds">'</span>postcode<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>some_postcode<span class="pl-pds">'</span></span>,
+    <span class="pl-s"><span class="pl-pds">'</span>housenumber<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>some_housenumber<span class="pl-pds">'</span></span>
+    }
+}</pre></div>
+
+<h2>
+<a id="4-auditing-the-data" class="anchor" href="#4-auditing-the-data" aria-hidden="true"><span class="octicon octicon-link"></span></a>4. Auditing the data</h2>
+
+<p>We are going to assume that <strong>all the attributes, except for the <em>tags</em>, are going to be correct</strong>. That is, the <em>common attributes</em>, the GPS positions for the <em>nodes</em> and the list of nodes for the <em>ways</em> are not going to be sanity checked.</p>
+
+<p>As we have seen before, each <em>tag</em> has a <em>key/value pair</em> referring a specific characteristic of that <em>node</em> or <em>way</em>. We are going to audit first the <em>keys</em>, and then we will continue with the <em>values</em>.</p>
+
+<h3>
+<a id="41-analyzing-the-different-keys" class="anchor" href="#41-analyzing-the-different-keys" aria-hidden="true"><span class="octicon octicon-link"></span></a>4.1 Analyzing the different <em>keys</em>
+</h3>
+
+<h4>
+<a id="411-structure-applying-regular-expressions" class="anchor" href="#411-structure-applying-regular-expressions" aria-hidden="true"><span class="octicon octicon-link"></span></a>4.1.1 Structure (applying <em>regular expressions</em>)</h4>
+
+<blockquote>
+<p>This analysis has been performed with different functions within the <a href="./src/audit_keys_basic.py">audit_keys_basic.py</a> script.</p>
+</blockquote>
+
+<p>If we take a look at the <em>tags</em> presented in the document, classifying their <em>key</em> depending on the kind of <em>Element</em> (<em>node</em> or <em>way</em>) and also the structure (if all the characters are correct or if it has a namespace, for example) we get the following structure:</p>
+
+<div class="highlight highlight-javascript"><pre>{<span class="pl-s"><span class="pl-pds">'</span>node<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>lower<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">89359</span>,
+          <span class="pl-s"><span class="pl-pds">'</span>lower_colon<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">53673</span>,
+          <span class="pl-s"><span class="pl-pds">'</span>lower_colon2<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">171</span>,
+          <span class="pl-s"><span class="pl-pds">'</span>other<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">344</span>,
+          <span class="pl-s"><span class="pl-pds">'</span>problemchars<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">0</span>},
+ <span class="pl-s"><span class="pl-pds">'</span>way<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>lower<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">206635</span>,
+         <span class="pl-s"><span class="pl-pds">'</span>lower_colon<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">34756</span>,
+         <span class="pl-s"><span class="pl-pds">'</span>lower_colon2<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">250</span>,
+         <span class="pl-s"><span class="pl-pds">'</span>other<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">22</span>,
+         <span class="pl-s"><span class="pl-pds">'</span>problemchars<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">1</span>}}</pre></div>
+
+<p>In this case we have made a count of the different categories: <strong><em>lower</em></strong> represents all the <em>keys</em> that are composed by lower case characters and/or the underscore (ex. <code>admin_level</code>), <strong><em>lower_colon</em></strong> represents all the <em>keys</em> that have the same structure as the previous but that also includes one namespace (ex. <code>addr:city</code>), <em>lower_colon2</em> <strong>represents</strong> all the <em>keys</em> that have the same structure as <em>lower</em> but that includes two namespaces (ex. <code>maxspeed:lanes:forward</code>), <strong><em>problemchars</em></strong> represents all the values with one or more problematic characters (other than <code>a-z</code> or <code>_</code>) and finally <strong><em>other</em></strong> represents all the other cases.</p>
+
+<p>As we said before, we can nest the keys with namespaces within attributes of our JSON-like document. So the <em>tags</em> in the categories <strong><em>lower_colon</em></strong> and <strong><em>lower_colon2</em></strong> could be treated that way. In the case of the <strong><em>lower</em></strong> category, we can add directly the <em>tags</em> as attributes to our document.</p>
+
+<p>Regarding the <strong><em>other</em></strong> category and the problematic characters, we should check what kind of <em>tags</em> we have. Following the last procedure, we are going to count how many different <em>keys</em> we have for those <em>tags</em>:</p>
+
+<div class="highlight highlight-javascript"><pre>{<span class="pl-s"><span class="pl-pds">'</span>node<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>lower<span class="pl-pds">'</span></span><span class="pl-k">:</span> { ... },
+         <span class="pl-s"><span class="pl-pds">'</span>lower_colon<span class="pl-pds">'</span></span><span class="pl-k">:</span> { ... },
+         <span class="pl-s"><span class="pl-pds">'</span>lower_colon2<span class="pl-pds">'</span></span><span class="pl-k">:</span> { ... },
+         <span class="pl-s"><span class="pl-pds">'</span>probemchars<span class="pl-pds">'</span></span><span class="pl-k">:</span> {},         
+         <span class="pl-s"><span class="pl-pds">'</span>other<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>CODIGO<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">3</span>,
+                   <span class="pl-s"><span class="pl-pds">'</span>FIXME<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">2</span>,
+                   <span class="pl-s"><span class="pl-pds">'</span>fuel:GTL_diesel<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">45</span>,
+                   <span class="pl-s"><span class="pl-pds">'</span>fuel:HGV_diesel<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">2</span>,
+                   <span class="pl-s"><span class="pl-pds">'</span>fuel:diesel_B<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">25</span>,
+                   <span class="pl-s"><span class="pl-pds">'</span>fuel:diesel_C<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">1</span>,
+                   <span class="pl-s"><span class="pl-pds">'</span>fuel:octane_91<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">1</span>,
+                   <span class="pl-s"><span class="pl-pds">'</span>fuel:octane_95<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">70</span>,
+                   <span class="pl-s"><span class="pl-pds">'</span>fuel:octane_98<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">48</span>,
+                   <span class="pl-s"><span class="pl-pds">'</span>ideewfs:alturaElipsoidal<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">18</span>,
+                   <span class="pl-s"><span class="pl-pds">'</span>ideewfs:factorEscala<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">18</span>,
+                   <span class="pl-s"><span class="pl-pds">'</span>ideewfs:fechaCompensacion<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">18</span>,
+                   <span class="pl-s"><span class="pl-pds">'</span>ideewfs:husoUTM<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">18</span>,
+                   <span class="pl-s"><span class="pl-pds">'</span>ideewfs:numeroROI<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">18</span>,
+                   <span class="pl-s"><span class="pl-pds">'</span>ideewfs:xUTM<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">18</span>,
+                   <span class="pl-s"><span class="pl-pds">'</span>ideewfs:yUTM<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">18</span>,
+                   <span class="pl-s"><span class="pl-pds">'</span>naptan:CommonName<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">1</span>,
+                   <span class="pl-s"><span class="pl-pds">'</span>naptan:Indicator<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">1</span>,
+                   <span class="pl-s"><span class="pl-pds">'</span>naptan:Street<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">1</span>,
+                   <span class="pl-s"><span class="pl-pds">'</span>ref:RRG<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">18</span>}},
+ <span class="pl-s"><span class="pl-pds">'</span>way<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>lower<span class="pl-pds">'</span></span><span class="pl-k">:</span> { ... },
+         <span class="pl-s"><span class="pl-pds">'</span>lower_colon<span class="pl-pds">'</span></span><span class="pl-k">:</span> { ... },
+         <span class="pl-s"><span class="pl-pds">'</span>lower_colon2<span class="pl-pds">'</span></span><span class="pl-k">:</span> { ... },
+         <span class="pl-s"><span class="pl-pds">'</span>probemchars<span class="pl-pds">'</span></span><span class="pl-k">:</span> {u<span class="pl-s"><span class="pl-pds">'</span>Torre<span class="pl-cce">\x</span>f3n del castillo de los Salazar<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">1</span>},
+         <span class="pl-s"><span class="pl-pds">'</span>other<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>FIXME<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">1</span>,
+                   <span class="pl-s"><span class="pl-pds">'</span>N<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">1</span>,
+                   <span class="pl-s"><span class="pl-pds">'</span>fuel:GTL_diesel<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">2</span>,
+                   <span class="pl-s"><span class="pl-pds">'</span>fuel:diesel_B<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">1</span>,
+                   <span class="pl-s"><span class="pl-pds">'</span>fuel:octane_95<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">9</span>,
+                   <span class="pl-s"><span class="pl-pds">'</span>fuel:octane_98<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">8</span>}}}</pre></div>
+
+<p>As we can see, most of the cases have been classified into this category because they have capital letters or even numbers. The <a href="http://wiki.openstreetmap.org/wiki/Tags">OSM wiki</a> specifies that <em>both the key and value are free format text fields</em>, however it is not a common practice to include such kind of characters on the <em>key</em>. We are going to analyze each one of those values to understand what they mean.</p>
+
+<p>The <a href="http://wiki.openstreetmap.org/wiki/Key:fixme"><strong>FIXME</strong></a> <em>key</em> <em>"allows contributors to mark objects and places that need further attention”</em>. The <strong>CODIGO</strong> <em>key</em> does not seem to have any meaning, we will try to understand what it means later. The <strong>N</strong> <em>key</em> seems to be some kind of error, we will try to discover its meaning later too. The <strong>naptan</strong> namespace references the <a href="http://wiki.openstreetmap.org/wiki/NaPTAN">NaPTAN and NPTG</a> datasets for bus stops and places which the <a href="http://www.dft.gov.uk/">UK Department for Transport</a> and <a href="http://www.traveline.org.uk/aboutTL.htm">Traveline</a> have offered to make available to OpenStreetMap project, so given that this region belongs to Spain, I suppose these values should not be there. The <a href="http://wiki.openstreetmap.org/wiki/ES:RGN"><strong>ideewfs</strong></a> <em>key</em> refers to the <em>Web Feature Services</em> (WFS) of the <em>Infraestructura de Datos Espaciales de España</em> (IDEE - Spatial Data Infrastructure of Spain), which is a web service to consult geographic features of Spain, so this data refers to data that belongs to the <em>Red Geodésica Nacional</em> (RGN - National Geodetic Network). The <a href="http://wiki.openstreetmap.org/wiki/Key:ref"><strong>ref</strong></a> <em>key</em> is used for reference numbers or codes (as we have seen for referencing the <em>nodes</em> within a <em>way</em>), which in this case has the <strong>RRG</strong> namespace, that is referenced on the RGN (as the <strong>ideewfs</strong>). Nevertheless, I have not found any reference about what it means, so we will treat them the same way as the others. The penultimate element is the <a href="http://wiki.openstreetmap.org/wiki/Key:fuel"><strong>fuel</strong></a> <em>key</em>, which describes which fuels are available at <a href="http://wiki.openstreetmap.org/wiki/Key:amenity">amenity</a>=<a href="http://wiki.openstreetmap.org/wiki/Tag:amenity%3Dfuel">fuel</a> sites. Finally we have a value within the <strong>problemchars</strong> category,  <code>u'Torre\xf3n del castillo de los Salazar'</code> that clearly should not be there because it refers to a name of some kind of castle-like building, so it has to be within the <em>value</em> of a <strong><a href="http://wiki.openstreetmap.org/wiki/Key:historic">historic</a>:castle</strong> <em>key</em> (for example).</p>
+
+<p>Summarizing, we can proceed to storage as attributes in our document the <em>keys</em> <strong>FIXME</strong> (because we do not know what that user was referring to) and <strong>fuel</strong>. In the case of <strong>ideewfs</strong> and <strong>ref:RRG</strong>, it turns out that these <em>nodes</em> has a <em>tag</em> with a <strong>source</strong> <em>key</em> pointing to the IDEE, so both reference to the same source. However, we are not sure about the meaning of those <em>tags</em>, so we will need further analysis of the <em>keys</em>. The case <strong>CODIGO</strong> refers to a some specific trees that are protected by the Basque Government and have a unique identifier that can be consulted <a href="http://www.uragentzia.euskadi.net/u81-ecoaguas/es/u95aWar/lugaresJSP/U95aVolverLugares.do?u95aMigasPan=L,1,1,1,3,1,1;L,2,13674,018;H,2,14021,016;L,2,13745,002;EN,1,9,1,300;L,2,13733,007;">here</a>. They are under the <a href="http://wiki.openstreetmap.org/wiki/Map_Features#Natural"><em>Primary Feature</em> <strong>natural</strong></a> so we can treat these values as other attributes within our object.</p>
+
+<p>In the castle-case, effectively we have the following wrong <em>tag</em>: <code>&lt;tag k="Torreón del castillo de los Salazar" v="water" /&gt;</code>. We do not know what the user wanted to say with the <em>water</em> value, but it is clear that the <em>key</em> in this case should be moved to a <em>tag</em> with a <em>name key</em>: <code>&lt;tag k="name" v="Torreón del castillo de los Salazar" /&gt;</code>. The <strong>N</strong> <em>key</em> refers to a street name as the <em>tag</em> states: <code>&lt;tag k="N" v="Calle Real" /&gt;</code>, so we should change it for <code>&lt;tag k="name" v="Calle Real" /&gt;</code>.</p>
+
+<h4>
+<a id="412-namespaces-and-aggregating-attributes" class="anchor" href="#412-namespaces-and-aggregating-attributes" aria-hidden="true"><span class="octicon octicon-link"></span></a>4.1.2 <em>Namespaces</em> and aggregating attributes</h4>
+
+<blockquote>
+<p>This analysis has been performed with different functions within the <a href="./src/audit_keys_namespaces.py">audit_keys_namespaces.py</a> script.</p>
+</blockquote>
+
+<p>As we stated before, the <em>tags</em> that belong to a <em>namespace</em> are going to be nested within attributes in our JSON document. However, there are some cases where we have a specific <em>key</em> and also other <em>keys</em> with that same <em>key</em> as prefix, for example:</p>
+
+<div class="highlight highlight-xml"><pre>&lt;<span class="pl-ent">node</span> <span class="pl-e">changeset</span>=<span class="pl-s"><span class="pl-pds">"</span>12512900<span class="pl-pds">"</span></span> <span class="pl-e">id</span>=<span class="pl-s"><span class="pl-pds">"</span>571400447<span class="pl-pds">"</span></span> <span class="pl-e">lat</span>=<span class="pl-s"><span class="pl-pds">"</span>43.2249805<span class="pl-pds">"</span></span> <span class="pl-e">lon</span>=<span class="pl-s"><span class="pl-pds">"</span>-2.8184747<span class="pl-pds">"</span></span> <span class="pl-e">timestamp</span>=<span class="pl-s"><span class="pl-pds">"</span>2012-07-27T15:24:07Z<span class="pl-pds">"</span></span> <span class="pl-e">uid</span>=<span class="pl-s"><span class="pl-pds">"</span>53891<span class="pl-pds">"</span></span> <span class="pl-e">user</span>=<span class="pl-s"><span class="pl-pds">"</span>nubarron<span class="pl-pds">"</span></span> <span class="pl-e">version</span>=<span class="pl-s"><span class="pl-pds">"</span>6<span class="pl-pds">"</span></span>&gt;
+    &lt;<span class="pl-ent">tag</span> <span class="pl-e">k</span>=<span class="pl-s"><span class="pl-pds">"</span>is_in<span class="pl-pds">"</span></span> <span class="pl-e">v</span>=<span class="pl-s"><span class="pl-pds">"</span>Bizkaia;Euskadi;Spain;Europe<span class="pl-pds">"</span></span> /&gt;
+    &lt;<span class="pl-ent">tag</span> <span class="pl-e">k</span>=<span class="pl-s"><span class="pl-pds">"</span>is_in:continent<span class="pl-pds">"</span></span> <span class="pl-e">v</span>=<span class="pl-s"><span class="pl-pds">"</span>Europe<span class="pl-pds">"</span></span> /&gt;
+    &lt;<span class="pl-ent">tag</span> <span class="pl-e">k</span>=<span class="pl-s"><span class="pl-pds">"</span>is_in:country<span class="pl-pds">"</span></span> <span class="pl-e">v</span>=<span class="pl-s"><span class="pl-pds">"</span>Spain<span class="pl-pds">"</span></span> /&gt;
+    &lt;<span class="pl-ent">tag</span> <span class="pl-e">k</span>=<span class="pl-s"><span class="pl-pds">"</span>is_in:municipality<span class="pl-pds">"</span></span> <span class="pl-e">v</span>=<span class="pl-s"><span class="pl-pds">"</span>Usansolo<span class="pl-pds">"</span></span> /&gt;
+    &lt;<span class="pl-ent">tag</span> <span class="pl-e">k</span>=<span class="pl-s"><span class="pl-pds">"</span>is_in:province<span class="pl-pds">"</span></span> <span class="pl-e">v</span>=<span class="pl-s"><span class="pl-pds">"</span>Bizkaia<span class="pl-pds">"</span></span> /&gt;
+    &lt;<span class="pl-ent">tag</span> <span class="pl-e">k</span>=<span class="pl-s"><span class="pl-pds">"</span>is_in:region<span class="pl-pds">"</span></span> <span class="pl-e">v</span>=<span class="pl-s"><span class="pl-pds">"</span>Euskadi<span class="pl-pds">"</span></span> /&gt;
+    &lt;<span class="pl-ent">tag</span> <span class="pl-e">k</span>=<span class="pl-s"><span class="pl-pds">"</span>name<span class="pl-pds">"</span></span> <span class="pl-e">v</span>=<span class="pl-s"><span class="pl-pds">"</span>Trokarro<span class="pl-pds">"</span></span> /&gt;
+    &lt;<span class="pl-ent">tag</span> <span class="pl-e">k</span>=<span class="pl-s"><span class="pl-pds">"</span>place<span class="pl-pds">"</span></span> <span class="pl-e">v</span>=<span class="pl-s"><span class="pl-pds">"</span>suburb<span class="pl-pds">"</span></span> /&gt;
+  &lt;/<span class="pl-ent">node</span>&gt;</pre></div>
+
+<p>Here we have serval <em>tags</em> with the <strong>is_in</strong> prefix and one without <em>namespace</em>. Moreover, in this case, the <em>tag</em> without <em>namespace</em> has all the other values separated by a semicolon, so we should probably remove it. This behavior is not always the same, for example:</p>
+
+<div class="highlight highlight-xml"><pre>&lt;<span class="pl-ent">node</span> <span class="pl-e">changeset</span>=<span class="pl-s"><span class="pl-pds">"</span>30014663<span class="pl-pds">"</span></span> <span class="pl-e">id</span>=<span class="pl-s"><span class="pl-pds">"</span>560565243<span class="pl-pds">"</span></span> <span class="pl-e">lat</span>=<span class="pl-s"><span class="pl-pds">"</span>43.2607099<span class="pl-pds">"</span></span> <span class="pl-e">lon</span>=<span class="pl-s"><span class="pl-pds">"</span>-2.9271508<span class="pl-pds">"</span></span> <span class="pl-e">timestamp</span>=<span class="pl-s"><span class="pl-pds">"</span>2015-04-06T12:44:22Z<span class="pl-pds">"</span></span> <span class="pl-e">uid</span>=<span class="pl-s"><span class="pl-pds">"</span>251029<span class="pl-pds">"</span></span> <span class="pl-e">user</span>=<span class="pl-s"><span class="pl-pds">"</span>Voidoid<span class="pl-pds">"</span></span> <span class="pl-e">version</span>=<span class="pl-s"><span class="pl-pds">"</span>5<span class="pl-pds">"</span></span>&gt;
+    &lt;<span class="pl-ent">tag</span> <span class="pl-e">k</span>=<span class="pl-s"><span class="pl-pds">"</span>amenity<span class="pl-pds">"</span></span> <span class="pl-e">v</span>=<span class="pl-s"><span class="pl-pds">"</span>bank<span class="pl-pds">"</span></span> /&gt;
+    &lt;<span class="pl-ent">tag</span> <span class="pl-e">k</span>=<span class="pl-s"><span class="pl-pds">"</span>atm<span class="pl-pds">"</span></span> <span class="pl-e">v</span>=<span class="pl-s"><span class="pl-pds">"</span>yes<span class="pl-pds">"</span></span> /&gt;
+    &lt;<span class="pl-ent">tag</span> <span class="pl-e">k</span>=<span class="pl-s"><span class="pl-pds">"</span>atm:network<span class="pl-pds">"</span></span> <span class="pl-e">v</span>=<span class="pl-s"><span class="pl-pds">"</span>Euro 6000<span class="pl-pds">"</span></span> /&gt;
+    &lt;<span class="pl-ent">tag</span> <span class="pl-e">k</span>=<span class="pl-s"><span class="pl-pds">"</span>name<span class="pl-pds">"</span></span> <span class="pl-e">v</span>=<span class="pl-s"><span class="pl-pds">"</span>BBK<span class="pl-pds">"</span></span> /&gt;
+  &lt;/<span class="pl-ent">node</span>&gt;</pre></div>
+
+<p>In this case the <em>tag</em> without <em>namespace</em> only states that there is an <strong>atm</strong> (and that we will probably have other <em>tags</em> with <strong>atm</strong> as prefix). In this case we should also remove the "plain" <em>tag</em> as we know that this point do have an atm because it will have an <strong>atm</strong> attribute.</p>
+
+<p>The complete list of <em>tags</em> that follow this pattern can be shown below:</p>
+
+<div class="highlight highlight-python"><pre>[<span class="pl-s"><span class="pl-pds">'</span>building<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>population<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>maxspeed<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>lanes<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>name<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>aerialway<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>area<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>social_facility<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>wheelchair<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>atm<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>wikipedia<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>recording<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>source<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>alt_name<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>internet_access<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>is_in<span class="pl-pds">'</span></span>]</pre></div>
+
+<p>Nevertheless, each individual case could be different. In the case of the <a href="http://wiki.openstreetmap.org/wiki/Names"><strong>name</strong></a> for example, we could have a <strong>name</strong> <em>tag</em> for the default name and localized names in different languages with suffixes to that <em>tag</em> (<strong>name:es</strong> for the spanish name).</p>
+
+<p>After examining all these values, I would conclude that the most reasonable approach is to create a <strong>default</strong> value for the <em>tag</em> without <em>namespace</em> and add the rest with their corresponding <em>namespace</em>. In the example of the <strong>atm</strong>:</p>
+
+<div class="highlight highlight-javascript"><pre>{
+...
+<span class="pl-s"><span class="pl-pds">'</span>atm<span class="pl-pds">'</span></span><span class="pl-k">:</span> {
+        <span class="pl-s"><span class="pl-pds">'</span>default<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>yes<span class="pl-pds">'</span></span>,
+        <span class="pl-s"><span class="pl-pds">'</span>network<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>Euro 6000<span class="pl-pds">'</span></span>
+       }
+}</pre></div>
+
+<h3>
+<a id="42-analyzing-the-values" class="anchor" href="#42-analyzing-the-values" aria-hidden="true"><span class="octicon octicon-link"></span></a>4.2 Analyzing the <em>values</em>
+</h3>
+
+<blockquote>
+<p>This analysis has been performed with different functions within the <a href="./src/audit_values_basic.py">audit_values_basic.py</a> script.</p>
+</blockquote>
+
+<p>Now it is time to analyze all the <em>values</em> within the <em>tags</em> of the different <em>Elements</em>. Given the large amount of different attributes, we are going to focus in those that could be checked in some way, like the <a href="http://wiki.openstreetmap.org/wiki/Key:addr">address</a> different fields.</p>
+
+<p>The address <em>keys</em> we have follow a distribution:</p>
+
+<div class="highlight highlight-javascript"><pre>{<span class="pl-s"><span class="pl-pds">'</span>addr:city<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">1673</span>,
+ <span class="pl-s"><span class="pl-pds">'</span>addr:country<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">937</span>,
+ <span class="pl-s"><span class="pl-pds">'</span>addr:country_code<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">15</span>,
+ <span class="pl-s"><span class="pl-pds">'</span>addr:full<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">13</span>,
+ <span class="pl-s"><span class="pl-pds">'</span>addr:housename<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">33</span>,
+ <span class="pl-s"><span class="pl-pds">'</span>addr:housenumber<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">4804</span>,
+ <span class="pl-s"><span class="pl-pds">'</span>addr:inclusion<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">3</span>,
+ <span class="pl-s"><span class="pl-pds">'</span>addr:interpolation<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">145</span>,
+ <span class="pl-s"><span class="pl-pds">'</span>addr:place<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">2</span>,
+ <span class="pl-s"><span class="pl-pds">'</span>addr:postcode<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">1686</span>,
+ <span class="pl-s"><span class="pl-pds">'</span>addr:state<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">5</span>,
+ <span class="pl-s"><span class="pl-pds">'</span>addr:street<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">4909</span>}</pre></div>
+
+<p>In this case we can differentiate between three types of values that we will likely find: text-based, numeric and code-based. The last of them references to those categories that do not represent a physical characteristic, but instead are used by OSM: <a href="http://wiki.openstreetmap.org/wiki/Addresses#Using_Address_Interpolation_for_partial_surveys"><strong>addr:inclusion</strong></a> and <a href="http://wiki.openstreetmap.org/wiki/Key:addr:interpolation"><strong>addr:interpolation</strong></a>. We also have a <em>tag</em> that represents the full address, <strong>addr:full</strong>, which we are going to leave as it comes, regarding the complexity to parse a field like that.</p>
+
+<h4>
+<a id="421-numeric-values" class="anchor" href="#421-numeric-values" aria-hidden="true"><span class="octicon octicon-link"></span></a>4.2.1 Numeric values</h4>
+
+<p>Regarding the numeric values, we have <strong>addr:housenumber</strong> and <strong>addr:postcode</strong>. These two have some variations and it would be better to analyze their structure (like we did with the <em>keys</em>). In the case of <strong>postcode</strong> there is one case where we have several values separated by semicolon, which matches with the city of Bilbao (it could probably be a good idea to convert those values into an array in the JSON document). We also have other value <code>'Larrabetzu'</code>, which is clearly not a postcode but a city name instead. </p>
+
+<p>Attending the <strong>housenumber</strong> values, we can see different patterns: with only numbers, with numbers and a capital letter, with a number and a word <em>bis</em> (which means that there are two buildings with the same number; it appears close to the number, separated by a space, with capital and non capital letters), with a range of numbers (as a list and also as an interval) and others:</p>
+
+<div class="highlight highlight-javascript"><pre>[<span class="pl-s"><span class="pl-pds">'</span>SN(B)<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>SN(D)<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>7 - 43<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>2 - 36<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>46, BIS<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>2, 4 y 7<span class="pl-pds">'</span></span>, u<span class="pl-s"><span class="pl-pds">'</span>8, 1<span class="pl-cce">\x</span>ba D<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>2, 4<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>6, 8<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>12, 14<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>13-15<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>SN(A)<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>15-17<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>2019.<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>1-3<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>SN(C)<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>SN(E)<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>4, 6<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>km 508<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>4, 6, 8, 10<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>s/n<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>3, 5, 7, 9<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>12-14<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>8, 10<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>37-39<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>12-38<span class="pl-pds">'</span></span>]</pre></div>
+
+<p>For those that have several values the best approach would be to save the values within an array, but we do not know if a range <code>12-14</code> includes the number 13 or not (probably not). We have also values with <code>s/n</code> which means <em>sin número</em> (<em>without number</em> in spanish). I suppose the <code>SN(...)</code> values refer the same as <code>s/n</code> but with a letter instead of a number. However, we have some values that could be corrected.</p>
+
+<h4>
+<a id="422-text-based-values" class="anchor" href="#422-text-based-values" aria-hidden="true"><span class="octicon octicon-link"></span></a>4.2.2 Text-based values</h4>
+
+<p>Regarding the text-based values, we have <strong>addr:city</strong>, <strong>addr:country</strong>, <strong>addr:country_code</strong>, <strong>addr:housename</strong>, <strong>addr:place</strong>, <strong>addr:state</strong> and <strong>addr:street</strong>. In the cases of <strong>country</strong>, <strong>country_code</strong> and <strong>state</strong> we have the same value, <em>ES</em> (referring to Spain). In the case of <strong>place</strong> we only have two values, one of them does not start with capital letter, but apart from that, they seem correct. </p>
+
+<p>Regarding the three cases left, we can see different patterns like strings with all capital letters and other with all small letters (only two cases). We are going to obviate those cases because the tasks to refactor them could be, at least, tedious. Analyzing the <strong>housename</strong>, we see one numeric value <code>1</code> that should not be there and three street names that probably should not be there either. In the case of <strong>city</strong>, we have one case that starts with lowercase and should be corrected.</p>
+
+<p>We are going to center our efforts analyzing the <strong>street</strong> value, looking mainly for unexpected street types or abbreviations and creating a <em>mapping</em> function to correct those values. That mapping can be viewed in the following dictionary:</p>
+
+<div class="highlight highlight-javascript"><pre>mapping_street_types <span class="pl-k">=</span> {
+    <span class="pl-s"><span class="pl-pds">'</span>ACCESO<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>Acceso<span class="pl-pds">'</span></span>,
+    <span class="pl-s"><span class="pl-pds">'</span>AU<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>Autovía<span class="pl-pds">'</span></span>,
+    <span class="pl-s"><span class="pl-pds">'</span>AUTOVIA<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>Autovía<span class="pl-pds">'</span></span>,
+    <span class="pl-s"><span class="pl-pds">'</span>AVENIDA<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>Avenida<span class="pl-pds">'</span></span>,
+    <span class="pl-s"><span class="pl-pds">'</span>BARRIO<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>Barrio<span class="pl-pds">'</span></span>,
+    <span class="pl-s"><span class="pl-pds">'</span>B<span class="pl-cce">\x</span>ba<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>Barrio<span class="pl-pds">'</span></span>,
+    <span class="pl-s"><span class="pl-pds">'</span>C/<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>Calle<span class="pl-pds">'</span></span>,
+    <span class="pl-s"><span class="pl-pds">'</span>CALLE<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>Calle<span class="pl-pds">'</span></span>,
+    <span class="pl-s"><span class="pl-pds">'</span>CARRETERA<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>Carretera<span class="pl-pds">'</span></span>,
+    <span class="pl-s"><span class="pl-pds">'</span>CL<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>Calle<span class="pl-pds">'</span></span>,
+    <span class="pl-s"><span class="pl-pds">'</span>CR<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>Carretera<span class="pl-pds">'</span></span>,
+    <span class="pl-s"><span class="pl-pds">'</span>CRTA.<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>Carretera<span class="pl-pds">'</span></span>,
+    <span class="pl-s"><span class="pl-pds">'</span>CTRA.N-623,BURGOS-SANTANDER<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>Carretera N-623, Burgos-Santander<span class="pl-pds">'</span></span>,
+    <span class="pl-s"><span class="pl-pds">'</span>Carretera/Carrera<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>Carretera<span class="pl-pds">'</span></span>,
+    <span class="pl-s"><span class="pl-pds">'</span>Kalea<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>kalea<span class="pl-pds">'</span></span>,
+    <span class="pl-s"><span class="pl-pds">'</span>PLAZA<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>Plaza<span class="pl-pds">'</span></span>,
+    <span class="pl-s"><span class="pl-pds">'</span>POLIGONO<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>Polígono<span class="pl-pds">'</span></span>,
+    <span class="pl-s"><span class="pl-pds">'</span>Urbanizaci<span class="pl-cce">\x</span>c3<span class="pl-cce">\x</span>b3n<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>Urbanización<span class="pl-pds">'</span></span>,
+    <span class="pl-s"><span class="pl-pds">'</span>Urbanizaci<span class="pl-cce">\x</span>f3n<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>Urbanización<span class="pl-pds">'</span></span>
+}</pre></div>
+
+<p>In this case we are going to correct the street types that are in capital letters, but only the street type, not the rest of the string.</p>
+
+<h2>
+<a id="5-cleaning-the-data" class="anchor" href="#5-cleaning-the-data" aria-hidden="true"><span class="octicon octicon-link"></span></a>5. Cleaning the data</h2>
+
+<p>As we have seen before, the final goal is to clean and store the OSM <em>Elements</em>, converting them into JSON documents and get them inside a MongoDB database. </p>
+
+<p>Once we have identified the main problems we want to solve in the original data, we will create a procedure to clean it. The tasks we are going to do are the following:</p>
+
+<ul>
+<li>[x] Nest <em>common</em> attributes (except <em>id</em> and <em>visible</em>) into a <em>creation</em> attribute.</li>
+<li>[x] Create a <em>type</em> attribute (<em>node</em> or <em>way</em>).</li>
+<li>[x] Create array with position for <em>nodes</em>.</li>
+<li>[x] Create array for node references on <em>ways</em>.</li>
+<li>[x] Re-organize attributes, creating nested elements for <em>namespaces</em>.</li>
+<li>[x] Clean <em>tags</em> according the analysis we have made:
+
+<ul>
+<li>[x] Errors in <em>keys</em>.</li>
+<li>[x] Errors in <em>values</em>.</li>
+<li>[x] Street types correction (ex. from <code>C/</code> to <code>Calle</code>).</li>
+<li>[ ] Others (like correct all-caps nomenclature).</li>
+</ul>
+</li>
+<li>[x] Create a JSON object for each <em>Element</em> (<em>node</em> or <em>way</em>) in the original document.</li>
+<li>[x] Import all JSON objects into a MongoDB database.</li>
+</ul>
+
+<p>This entire procedure (except the final step) can be found in the script <a href="./src/clean.py">clean.py</a>, which creates a <a href="http://jsonlines.org/"><em>cleaned.jsonl</em></a> file that we could import later to our MongoDB database using the <a href="http://docs.mongodb.org/manual/reference/program/mongoimport/"><em>mongoimport</em> tool</a> as follows:</p>
+
+<div class="highlight highlight-shell"><pre>mongoimport -d osm -c merindades --file cleaned.jsonl</pre></div>
+
+<p>Where <em>osm</em> is the database name and <em>merindades</em> is the collection.</p>
+
+<h2>
+<a id="6-data-overview" class="anchor" href="#6-data-overview" aria-hidden="true"><span class="octicon octicon-link"></span></a>6. Data Overview</h2>
+
+<h3>
+<a id="61-documents" class="anchor" href="#61-documents" aria-hidden="true"><span class="octicon octicon-link"></span></a>6.1 Documents</h3>
+
+<p>As we have seen before, we have the original OSM xml document and a cleaned version in JSON format. These documents have the following approximate size:</p>
+
+<pre><code>data.osm .......... 355 MB
+cleaned.jsonl ..... 430 MB
+</code></pre>
+
+<h3>
+<a id="62-database" class="anchor" href="#62-database" aria-hidden="true"><span class="octicon octicon-link"></span></a>6.2 Database</h3>
+
+<h4>
+<a id="621-general-overview" class="anchor" href="#621-general-overview" aria-hidden="true"><span class="octicon octicon-link"></span></a>6.2.1 General Overview</h4>
+
+<p>Now that we have collected the data within a MongoDB database is time to run some queries to extract some insights about the OSM data. We are going to use the <a href="http://docs.mongodb.org/v2.2/mongo/"><em>mongo</em> shell</a>, a interactive JavaScript shell.</p>
+
+<ul>
+<li>Total number of <em>Elements</em>:</li>
+</ul>
+
+<div class="highlight highlight-javascript"><pre><span class="pl-k">&gt;</span> db.merindades.<span class="pl-c1">find</span>().count()
+<span class="pl-c1">1855383</span></pre></div>
+
+<ul>
+<li>Total number of <em>Nodes</em>:</li>
+</ul>
+
+<div class="highlight highlight-javascript"><pre><span class="pl-k">&gt;</span> db.merindades.<span class="pl-c1">find</span>({<span class="pl-s"><span class="pl-pds">'</span>type<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>node<span class="pl-pds">'</span></span>}).count()
+<span class="pl-c1">1758132</span></pre></div>
+
+<ul>
+<li>Total number of <em>Elements</em> that have a <em>null</em> value inside the <strong>visible</strong> attribute:</li>
+</ul>
+
+<div class="highlight highlight-javascript"><pre><span class="pl-k">&gt;</span> db.merindades.aggregate([{<span class="pl-s"><span class="pl-pds">'</span>$group<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>_id<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>$visible<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>count<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>$sum<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">1</span>}}}])
+{ <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">null</span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">1855383</span> }</pre></div>
+
+<p>In our <a href="./src/clean.py">clean.py</a> script we created an attribute <em>visible</em> for those cases where it would not exist, associating a <em>null</em> value (instead of a <em>true</em> or <em>false</em>). As we can see here, there is not any <em>Element</em> that has a <em>visible</em> attribute in the original OSM file, so all the documents we have in the database have a <em>null</em> value within the <em>visible</em> attribute.</p>
+
+<ul>
+<li>Number of <strong>places</strong> aggregated by type:</li>
+</ul>
+
+<div class="highlight highlight-javascript"><pre><span class="pl-k">&gt;</span> db.merindades.aggregate([{<span class="pl-s"><span class="pl-pds">'</span>$match<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>place<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>$exists<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">1</span>}}}, {<span class="pl-s"><span class="pl-pds">'</span>$group<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>_id<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>$place<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>count<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>$sum<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">1</span>}}}, {<span class="pl-s"><span class="pl-pds">'</span>$sort<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>count<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-k">-</span><span class="pl-c1">1</span>}}])
+{ <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>locality<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">12872</span> }
+{ <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>hamlet<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">1076</span> }
+{ <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>village<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">654</span> }
+{ <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>neighbourhood<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">206</span> }
+{ <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>isolated_dwelling<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">83</span> }
+{ <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>suburb<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">75</span> }
+{ <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>farm<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">8</span> }
+{ <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>town<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">8</span> }
+{ <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>yes<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">3</span> }
+{ <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>La Coteruca<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">1</span> }
+{ <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>state<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">1</span> }
+{ <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>city<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">1</span> }</pre></div>
+
+<p>Here we can see some values that should probably not be there, like <strong>yes</strong> or <strong>La Coretuca</strong>. We should have audit these error in previous stages of the process or update the documents in the database.</p>
+
+<ul>
+<li>Number of unique users:</li>
+</ul>
+
+<div class="highlight highlight-javascript"><pre><span class="pl-k">&gt;</span> db.merindades.distinct(<span class="pl-s"><span class="pl-pds">'</span>created.user<span class="pl-pds">'</span></span>).<span class="pl-c1">length</span>
+<span class="pl-c1">553</span></pre></div>
+
+<ul>
+<li>Top 5 users by contributions:</li>
+</ul>
+
+<div class="highlight highlight-javascript"><pre><span class="pl-k">&gt;</span> db.merindades.aggregate([{<span class="pl-s"><span class="pl-pds">'</span>$group<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>_id<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>$created.user<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>count<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>$sum<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">1</span>}}}, {<span class="pl-s"><span class="pl-pds">'</span>$sort<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>count<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-k">-</span><span class="pl-c1">1</span>}}, {<span class="pl-s"><span class="pl-pds">'</span>$limit<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">5</span>}])
+{ <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>cronoser<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">415038</span> }
+{ <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>Emilio Gomez<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">280561</span> }
+{ <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>sanchi<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">170710</span> }
+{ <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>jonbergor<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">123627</span> }
+{ <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>www_dorono_tk<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">65890</span> }</pre></div>
+
+<p>As we could expect here, the contributions are highly skewed, the contribution percentage of these 5 is: <em>cronoser</em> 22.37%, <em>Emilio Gomez</em> 15.12%, <em>sanchi</em> 9.2%, <em>jonbergor</em> 6.67% and <em>www_dorono_tk</em> 3.55%. Moreover, these 5 users, that represent the <strong>0.9% of the total users, have edited 56.91%</strong> of the <em>Elements</em>.</p>
+
+<ul>
+<li>Top 10 users by contribution:</li>
+</ul>
+
+<div class="highlight highlight-javascript"><pre><span class="pl-k">&gt;</span> db.merindades.aggregate([{<span class="pl-s"><span class="pl-pds">'</span>$group<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>_id<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>$created.user<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>count<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>$sum<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">1</span>}}}, {<span class="pl-s"><span class="pl-pds">'</span>$sort<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>count<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-k">-</span><span class="pl-c1">1</span>}}, {<span class="pl-s"><span class="pl-pds">'</span>$limit<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">10</span>}, {<span class="pl-s"><span class="pl-pds">'</span>$group<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>_id<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>top_10_users<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>count<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>$sum<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>$count<span class="pl-pds">'</span></span>}}}])
+{ <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>top_10_users<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">1304382</span> }</pre></div>
+
+<p>Here we can see that the top 10 users by contribution have edited the 70.3% of the <em>Elements</em> in our database. That is, <strong>1.8% of the total users have edited 70.3%</strong> of the <em>Elements</em>.</p>
+
+<ul>
+<li>Percentage of the <em>Elements</em> mapped by the top 5% users by contribution:</li>
+</ul>
+
+<div class="highlight highlight-javascript"><pre><span class="pl-k">&gt;</span> db.merindades.aggregate([{<span class="pl-s"><span class="pl-pds">'</span>$group<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>_id<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>$created.user<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>count<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>$sum<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">1</span>}}}, {<span class="pl-s"><span class="pl-pds">'</span>$sort<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>count<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-k">-</span><span class="pl-c1">1</span>}}, {<span class="pl-s"><span class="pl-pds">'</span>$limit<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">27</span>}, {<span class="pl-s"><span class="pl-pds">'</span>$group<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>_id<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>top_10_users<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>count<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>$sum<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>$count<span class="pl-pds">'</span></span>}}}])
+{ <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>top_10_users<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">1660270</span> }</pre></div>
+
+<p>The <strong>89.48% of the <em>Elements</em> have been mapped by the 5% of the users</strong>.</p>
+
+<ul>
+<li>Top 10 types of <strong>amenities</strong>:</li>
+</ul>
+
+<div class="highlight highlight-javascript"><pre><span class="pl-k">&gt;</span> db.merindades.aggregate([{<span class="pl-s"><span class="pl-pds">'</span>$match<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>amenity<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>$exists<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">1</span>}}}, {<span class="pl-s"><span class="pl-pds">'</span>$group<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>_id<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>$amenity<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>count<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>$sum<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">1</span>}}}, {<span class="pl-s"><span class="pl-pds">'</span>$sort<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>count<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-k">-</span><span class="pl-c1">1</span>}}, {<span class="pl-s"><span class="pl-pds">'</span>$limit<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">10</span>}])
+
+{ <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>place_of_worship<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">1052</span> }
+{ <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>drinking_water<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">868</span> }
+{ <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>parking<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">526</span> }
+{ <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>bar<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">336</span> }
+{ <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>restaurant<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">273</span> }
+{ <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>bank<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">210</span> }
+{ <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>school<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">209</span> }
+{ <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>cafe<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">140</span> }
+{ <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>pharmacy<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">124</span> }
+{ <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>fuel<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">122</span> }</pre></div>
+
+<p>No surprise here, due to the fact that there is a church in almost every single village in Spain, no matter the size of it.</p>
+
+<ul>
+<li>Grouping the <em>places of worship</em> by <strong>religion</strong>:</li>
+</ul>
+
+<div class="highlight highlight-javascript"><pre><span class="pl-k">&gt;</span> db.merindades.aggregate([{<span class="pl-s"><span class="pl-pds">'</span>$match<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>amenity<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>$exists<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">1</span>}, <span class="pl-s"><span class="pl-pds">'</span>amenity<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>place_of_worship<span class="pl-pds">'</span></span>}}, {<span class="pl-s"><span class="pl-pds">'</span>$group<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>_id<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>$religion<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>count<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>$sum<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">1</span>}}}, {<span class="pl-s"><span class="pl-pds">'</span>$sort<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>count<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-k">-</span><span class="pl-c1">1</span>}}, {<span class="pl-s"><span class="pl-pds">'</span>$limit<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">5</span>}])
+{ <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>christian<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">1035</span> }
+{ <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">null</span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">16</span> }
+{ <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>muslim<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>count<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">1</span> }</pre></div>
+
+<p>Also it would be likely that those that have no <strong>religion</strong> attribute (that appear as <em>null</em>) are also referring to <em>christian</em> religion.</p>
+
+<h4>
+<a id="622-geospational-queries" class="anchor" href="#622-geospational-queries" aria-hidden="true"><span class="octicon octicon-link"></span></a>6.2.2 Geospational Queries</h4>
+
+<p>As we said before, adding a position attribute to the <em>Nodes</em> allows us to query in terms of distance to a desired point. First of all we need to create the <strong>geospational index</strong>, in our <em>mongo</em> console:</p>
+
+<div class="highlight highlight-javascript"><pre><span class="pl-k">&gt;</span> db.merindades.ensureIndex({<span class="pl-s"><span class="pl-pds">'</span>pos<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>2d<span class="pl-pds">'</span></span>})
+{
+    <span class="pl-s"><span class="pl-pds">"</span>createdCollectionAutomatically<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">false</span>,
+    <span class="pl-s"><span class="pl-pds">"</span>numIndexesBefore<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">1</span>,
+    <span class="pl-s"><span class="pl-pds">"</span>numIndexesAfter<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">2</span>,
+    <span class="pl-s"><span class="pl-pds">"</span>ok<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">1</span>
+}</pre></div>
+
+<p>We are going to use the <em>find</em> method to make our queries. Here we can use the <a href="http://docs.mongodb.org/manual/reference/operator/query/near/">$near</a> operator, that returns the documents from nearest to farthest. We can also specify the maximum distance with the <a href="http://docs.mongodb.org/manual/reference/operator/query/maxDistance/">$maxDistance</a> operator. Because we are specifying a <a href="http://docs.mongodb.org/manual/core/2d/">2d index</a> with the <em>longitude</em> and <em>latitude</em> in our <strong>pos</strong> attribute in degrees, we need to specify the distance in the same units. Then, if we want to query within a distance in kilometers, we have to convert it by the following equation:</p>
+
+<pre><code>distance [º] = (distance [km] / earth_radius [km] ) * ( 180 º / π rad ) 
+</code></pre>
+
+<p>with and earth radius of 6378.1 km</p>
+
+<p>Here I am going to take the location reference of my hometown, <em>Medina de Pomar</em>, which has the following structure in the corresponding document within our database:</p>
+
+<div class="highlight highlight-javascript"><pre><span class="pl-k">&gt;</span> db.merindades.<span class="pl-c1">find</span>({<span class="pl-s"><span class="pl-pds">'</span>name<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>Medina de Pomar<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>place<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>town<span class="pl-pds">'</span></span>}).pretty()
+{
+    <span class="pl-s"><span class="pl-pds">"</span>_id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> ObjectId(<span class="pl-s"><span class="pl-pds">"</span>55a690cbb4170bc4a83c30f1<span class="pl-pds">"</span></span>),
+    <span class="pl-s"><span class="pl-pds">"</span>admin_level<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>8<span class="pl-pds">"</span></span>,
+    <span class="pl-s"><span class="pl-pds">"</span>name<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>Medina de Pomar<span class="pl-pds">"</span></span>,
+    <span class="pl-s"><span class="pl-pds">"</span>created<span class="pl-pds">"</span></span> <span class="pl-k">:</span> {
+        <span class="pl-s"><span class="pl-pds">"</span>user<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>cronoser<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>uid<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>461005<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>timestamp<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>2015-03-24T15:24:11Z<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>version<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>7<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>changeset<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>29705846<span class="pl-pds">"</span></span>
+    },
+    <span class="pl-s"><span class="pl-pds">"</span>ref<span class="pl-pds">"</span></span> <span class="pl-k">:</span> {
+        <span class="pl-s"><span class="pl-pds">"</span>ine<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>09209001100<span class="pl-pds">"</span></span>
+    },
+    <span class="pl-s"><span class="pl-pds">"</span>wikipedia<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>es:Medina_de_Pomar<span class="pl-pds">"</span></span>,
+    <span class="pl-s"><span class="pl-pds">"</span>pos<span class="pl-pds">"</span></span> <span class="pl-k">:</span> [
+        <span class="pl-k">-</span><span class="pl-c1">3.4861165</span>,
+        <span class="pl-c1">42.9322093</span>
+    ],
+    <span class="pl-s"><span class="pl-pds">"</span>ele<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>607<span class="pl-pds">"</span></span>,
+    <span class="pl-s"><span class="pl-pds">"</span>visible<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-c1">null</span>,
+    <span class="pl-s"><span class="pl-pds">"</span>place<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>town<span class="pl-pds">"</span></span>,
+    <span class="pl-s"><span class="pl-pds">"</span>source<span class="pl-pds">"</span></span> <span class="pl-k">:</span> {
+        <span class="pl-s"><span class="pl-pds">"</span>ele<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>MDT5<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>default<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>Instituto Geográfico Nacional<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>date<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>2011-06<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>name<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>Nomenclátor Geográfico de Municipios y Entidades de Población<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>file<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>http://centrodedescargas.cnig.es/CentroDescargas/equipamiento/BD_Municipios-Entidades.zip<span class="pl-pds">"</span></span>
+    },
+    <span class="pl-s"><span class="pl-pds">"</span>capital<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>8<span class="pl-pds">"</span></span>,
+    <span class="pl-s"><span class="pl-pds">"</span>population<span class="pl-pds">"</span></span> <span class="pl-k">:</span> {
+        <span class="pl-s"><span class="pl-pds">"</span>default<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>6225<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>date<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>2011<span class="pl-pds">"</span></span>
+    },
+    <span class="pl-s"><span class="pl-pds">"</span>type<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>node<span class="pl-pds">"</span></span>,
+    <span class="pl-s"><span class="pl-pds">"</span>id<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>492410974<span class="pl-pds">"</span></span>,
+    <span class="pl-s"><span class="pl-pds">"</span>is_in<span class="pl-pds">"</span></span> <span class="pl-k">:</span> {
+        <span class="pl-s"><span class="pl-pds">"</span>default<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>Burgos, Castilla y León, Spain, Europe<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>country<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>Spain<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>municipality<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>Medina de Pomar<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>country_code<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>ES<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>province_code<span class="pl-pds">"</span></span> <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">"</span>09<span class="pl-pds">"</span></span>
+    }
+}</pre></div>
+
+<p>We just need to specify the location coordinates along with the <em>$near</em> command to get the values we want.</p>
+
+<ul>
+<li>Number of <em>Elements</em> within a distance of <strong>5 km</strong>:</li>
+</ul>
+
+<div class="highlight highlight-javascript"><pre><span class="pl-k">&gt;</span> db.merindades.<span class="pl-c1">find</span>({<span class="pl-s"><span class="pl-pds">'</span>pos<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>$near<span class="pl-pds">'</span></span><span class="pl-k">:</span> [ <span class="pl-k">-</span><span class="pl-c1">3.4861165</span>, <span class="pl-c1">42.9322093</span> ], <span class="pl-s"><span class="pl-pds">'</span>$maxDistance<span class="pl-pds">'</span></span><span class="pl-k">:</span> (<span class="pl-c1">5</span> <span class="pl-k">*</span> (<span class="pl-c1">180</span>/(<span class="pl-c1">Math</span>.<span class="pl-c1">PI</span> <span class="pl-k">*</span> <span class="pl-c1">6378.1</span>)))}}).count()
+<span class="pl-c1">50047</span></pre></div>
+
+<ul>
+<li>Number of <em>Amenities</em> within a distance of <strong>5 km</strong>:</li>
+</ul>
+
+<div class="highlight highlight-javascript"><pre><span class="pl-k">&gt;</span> db.merindades.<span class="pl-c1">find</span>({<span class="pl-s"><span class="pl-pds">'</span>pos<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>$near<span class="pl-pds">'</span></span><span class="pl-k">:</span> [ <span class="pl-k">-</span><span class="pl-c1">3.4861165</span>, <span class="pl-c1">42.9322093</span> ], <span class="pl-s"><span class="pl-pds">'</span>$maxDistance<span class="pl-pds">'</span></span><span class="pl-k">:</span> (<span class="pl-c1">5</span> <span class="pl-k">*</span> (<span class="pl-c1">180</span>/(<span class="pl-c1">Math</span>.<span class="pl-c1">PI</span> <span class="pl-k">*</span> <span class="pl-c1">6378.1</span>)))}, <span class="pl-s"><span class="pl-pds">'</span>amenity<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>$exists<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">1</span>}}).count()
+<span class="pl-c1">143</span></pre></div>
+
+<ul>
+<li>Number of <em>bars</em>, <em>cafes</em> and <em>restaurants</em> within a distance of <strong>5 km</strong>.</li>
+</ul>
+
+<div class="highlight highlight-javascript"><pre><span class="pl-k">&gt;</span> db.merindades.<span class="pl-c1">find</span>({<span class="pl-s"><span class="pl-pds">'</span>pos<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>$near<span class="pl-pds">'</span></span><span class="pl-k">:</span> [ <span class="pl-k">-</span><span class="pl-c1">3.4861165</span>, <span class="pl-c1">42.9322093</span> ], <span class="pl-s"><span class="pl-pds">'</span>$maxDistance<span class="pl-pds">'</span></span><span class="pl-k">:</span> (<span class="pl-c1">5</span> <span class="pl-k">*</span> (<span class="pl-c1">180</span>/(<span class="pl-c1">Math</span>.<span class="pl-c1">PI</span> <span class="pl-k">*</span> <span class="pl-c1">6378.1</span>)))}, <span class="pl-s"><span class="pl-pds">'</span>amenity<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>$in<span class="pl-pds">'</span></span><span class="pl-k">:</span> [<span class="pl-s"><span class="pl-pds">'</span>bar<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>cafe<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>restaurant<span class="pl-pds">'</span></span>]}}).count()
+<span class="pl-c1">53</span></pre></div>
+
+<p>I was always impressed by the amount of this kind of places in my hometown, considering that it has an approximate population of 6.000 habitants.</p>
+
+<ul>
+<li>Number of <em>schools</em>, <em>places of worship</em>, <em>pharmacies</em>, <em>banks</em> and <em>fuel stations</em> within a distance of <strong>5 km</strong>:</li>
+</ul>
+
+<div class="highlight highlight-javascript"><pre><span class="pl-k">&gt;</span> db.merindades.<span class="pl-c1">find</span>({<span class="pl-s"><span class="pl-pds">'</span>pos<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>$near<span class="pl-pds">'</span></span><span class="pl-k">:</span> [ <span class="pl-k">-</span><span class="pl-c1">3.4861165</span>, <span class="pl-c1">42.9322093</span> ], <span class="pl-s"><span class="pl-pds">'</span>$maxDistance<span class="pl-pds">'</span></span><span class="pl-k">:</span> (<span class="pl-c1">5</span> <span class="pl-k">*</span> (<span class="pl-c1">180</span>/(<span class="pl-c1">Math</span>.<span class="pl-c1">PI</span> <span class="pl-k">*</span> <span class="pl-c1">6378.1</span>)))}, <span class="pl-s"><span class="pl-pds">'</span>amenity<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>school<span class="pl-pds">'</span></span>}).count()
+<span class="pl-c1">1</span>
+
+<span class="pl-k">&gt;</span> db.merindades.<span class="pl-c1">find</span>({<span class="pl-s"><span class="pl-pds">'</span>pos<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>$near<span class="pl-pds">'</span></span><span class="pl-k">:</span> [ <span class="pl-k">-</span><span class="pl-c1">3.4861165</span>, <span class="pl-c1">42.9322093</span> ], <span class="pl-s"><span class="pl-pds">'</span>$maxDistance<span class="pl-pds">'</span></span><span class="pl-k">:</span> (<span class="pl-c1">5</span> <span class="pl-k">*</span> (<span class="pl-c1">180</span>/(<span class="pl-c1">Math</span>.<span class="pl-c1">PI</span> <span class="pl-k">*</span> <span class="pl-c1">6378.1</span>)))}, <span class="pl-s"><span class="pl-pds">'</span>amenity<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>place_of_worship<span class="pl-pds">'</span></span>}).count()
+<span class="pl-c1">1</span>
+
+<span class="pl-k">&gt;</span> db.merindades.<span class="pl-c1">find</span>({<span class="pl-s"><span class="pl-pds">'</span>pos<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>$near<span class="pl-pds">'</span></span><span class="pl-k">:</span> [ <span class="pl-k">-</span><span class="pl-c1">3.4861165</span>, <span class="pl-c1">42.9322093</span> ], <span class="pl-s"><span class="pl-pds">'</span>$maxDistance<span class="pl-pds">'</span></span><span class="pl-k">:</span> (<span class="pl-c1">5</span> <span class="pl-k">*</span> (<span class="pl-c1">180</span>/(<span class="pl-c1">Math</span>.<span class="pl-c1">PI</span> <span class="pl-k">*</span> <span class="pl-c1">6378.1</span>)))}, <span class="pl-s"><span class="pl-pds">'</span>amenity<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>bank<span class="pl-pds">'</span></span>}).count()
+<span class="pl-c1">6</span>
+
+<span class="pl-k">&gt;</span> db.merindades.<span class="pl-c1">find</span>({<span class="pl-s"><span class="pl-pds">'</span>pos<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>$near<span class="pl-pds">'</span></span><span class="pl-k">:</span> [ <span class="pl-k">-</span><span class="pl-c1">3.4861165</span>, <span class="pl-c1">42.9322093</span> ], <span class="pl-s"><span class="pl-pds">'</span>$maxDistance<span class="pl-pds">'</span></span><span class="pl-k">:</span> (<span class="pl-c1">5</span> <span class="pl-k">*</span> (<span class="pl-c1">180</span>/(<span class="pl-c1">Math</span>.<span class="pl-c1">PI</span> <span class="pl-k">*</span> <span class="pl-c1">6378.1</span>)))}, <span class="pl-s"><span class="pl-pds">'</span>amenity<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>pharmacy<span class="pl-pds">'</span></span>}).count()
+<span class="pl-c1">4</span>
+
+<span class="pl-k">&gt;</span> db.merindades.<span class="pl-c1">find</span>({<span class="pl-s"><span class="pl-pds">'</span>pos<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>$near<span class="pl-pds">'</span></span><span class="pl-k">:</span> [ <span class="pl-k">-</span><span class="pl-c1">3.4861165</span>, <span class="pl-c1">42.9322093</span> ], <span class="pl-s"><span class="pl-pds">'</span>$maxDistance<span class="pl-pds">'</span></span><span class="pl-k">:</span> (<span class="pl-c1">5</span> <span class="pl-k">*</span> (<span class="pl-c1">180</span>/(<span class="pl-c1">Math</span>.<span class="pl-c1">PI</span> <span class="pl-k">*</span> <span class="pl-c1">6378.1</span>)))}, <span class="pl-s"><span class="pl-pds">'</span>amenity<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>fuel<span class="pl-pds">'</span></span>}).count()
+<span class="pl-c1">2</span></pre></div>
+
+<ul>
+<li>Number of <em>places of worships</em> and <em>bars, cafes and restaurants</em> within a distance of <strong>25 km</strong>:</li>
+</ul>
+
+<div class="highlight highlight-javascript"><pre><span class="pl-k">&gt;</span> db.merindades.<span class="pl-c1">find</span>({<span class="pl-s"><span class="pl-pds">'</span>pos<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>$near<span class="pl-pds">'</span></span><span class="pl-k">:</span> [ <span class="pl-k">-</span><span class="pl-c1">3.4861165</span>, <span class="pl-c1">42.9322093</span> ], <span class="pl-s"><span class="pl-pds">'</span>$minDistance<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">0</span>, <span class="pl-s"><span class="pl-pds">'</span>$maxDistance<span class="pl-pds">'</span></span><span class="pl-k">:</span> (<span class="pl-c1">25</span> <span class="pl-k">*</span> (<span class="pl-c1">180</span>/(<span class="pl-c1">Math</span>.<span class="pl-c1">PI</span> <span class="pl-k">*</span> <span class="pl-c1">6578.1</span>)))}, <span class="pl-s"><span class="pl-pds">'</span>amenity<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>place_of_worship<span class="pl-pds">'</span></span>}).count()  
+<span class="pl-c1">21</span>
+
+<span class="pl-k">&gt;</span> db.merindades.<span class="pl-c1">find</span>({<span class="pl-s"><span class="pl-pds">'</span>pos<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>$near<span class="pl-pds">'</span></span><span class="pl-k">:</span> [ <span class="pl-k">-</span><span class="pl-c1">3.4861165</span>, <span class="pl-c1">42.9322093</span> ], <span class="pl-s"><span class="pl-pds">'</span>$minDistance<span class="pl-pds">'</span></span><span class="pl-k">:</span> <span class="pl-c1">0</span>, <span class="pl-s"><span class="pl-pds">'</span>$maxDistance<span class="pl-pds">'</span></span><span class="pl-k">:</span> (<span class="pl-c1">25</span> <span class="pl-k">*</span> (<span class="pl-c1">180</span>/(<span class="pl-c1">Math</span>.<span class="pl-c1">PI</span> <span class="pl-k">*</span> <span class="pl-c1">6578.1</span>)))}, <span class="pl-s"><span class="pl-pds">'</span>amenity<span class="pl-pds">'</span></span><span class="pl-k">:</span> {<span class="pl-s"><span class="pl-pds">'</span>$in<span class="pl-pds">'</span></span><span class="pl-k">:</span> [<span class="pl-s"><span class="pl-pds">'</span>bar<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>cafe<span class="pl-pds">'</span></span>, <span class="pl-s"><span class="pl-pds">'</span>restaurant<span class="pl-pds">'</span></span>]}}).count()
+<span class="pl-c1">155</span></pre></div>
+
+<p>If we increase the distance from the center of the town, we reach other small villages where each one of them would probably have its own church and probably several <em>bars</em> (at least in the bigger ones).</p>
+
+<h2>
+<a id="7-conclusion" class="anchor" href="#7-conclusion" aria-hidden="true"><span class="octicon octicon-link"></span></a>7. Conclusion</h2>
+
+<p>Through all the stages of this project we have seen that we can find a wide variety or errors within the OSM data. We have centered our effort in analyzing only some of the fields, but <strong>there is definitely more work to do if we want a completely cleaned data</strong>. We have found errors in both <em>keys</em> and <em>values</em> of the different <em>tags</em>, and we have not only corrected them but also fixed some issues with the data, like creating various fields from one originally wrong (in case of <em>streets</em> that included also the number of the house and even the door letter). </p>
+
+<p>Despite our effort, the huge amount of different kind of <em>tags</em> make the cleaning process almost impossible if we do not center our efforts in the fields that we are interested in analyzing (like in this case the <em>address</em>). </p>
+
+<p>The OSM edition process is too much open to interpretations and in some cases it is not clear what rule to apply while tagging an item. It seems that it is too complex to know all the procedures to apply or they are too complex for an average user to spent time reading the documentation before start editing (what leads in errors about <em>what-each-tag-means</em>).</p>
+
+<p>I also find particularly tricky to work with the absolutely freedom allowed while adding new tags. I think that a more-structured approach could benefit the overall experience while working with OSM data.</p>
+
+<p>Apart from that, I think is incredible the power that a community could have while creating things together. Open Street Maps is without any doubt a great source of information and also it is probably the most recently actualized data (which depends on the activity of their users). </p>
+
+      <footer class="site-footer">
+        <span class="site-footer-owner"><a href="https://github.com/dsaiztc/OSMDataWrangling">Osmdatawrangling</a> is maintained by <a href="https://github.com/dsaiztc">dsaiztc</a>.</span>
+
+        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</span>
+      </footer>
+
+    </section>
+
+  
+  </body>
+</html>
+

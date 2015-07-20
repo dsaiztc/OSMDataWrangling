@@ -133,15 +133,15 @@ If we take a look at the *tags* presented in the document, classifying their *ke
  'way': {'lower': 206635,
          'lower_colon': 34756,
          'lower_colon2': 250,
-         'other': 23,
-         'problemchars': 0}}
+         'other': 22,
+         'problemchars': 1}}
 ```
 
 In this case we have made a count of the different categories: ***lower*** represents all the *keys* that are composed by lower case characters and/or the underscore (ex. `admin_level`), ***lower_colon*** represents all the *keys* that have the same structure as the previous but that also includes one namespace (ex. `addr:city`), *lower_colon2* **represents** all the *keys* that have the same structure as *lower* but that includes two namespaces (ex. `maxspeed:lanes:forward`), ***problemchars*** represents all the values with one or more problematic characters (other than `a-z` or `_`) and finally ***other*** represents all the other cases.
 
-As we said before, we can nest the keys with namespaces within attributes of our JSON-like document. So the *tags* in the categories ***lower_colon*** and ***lower_colon2*** could be treated that way. In the case of the ***lower*** category, we can add directly the *tags* as attributes to our document. As we have not found any problematic character, there is nothing to fix in that area.
+As we said before, we can nest the keys with namespaces within attributes of our JSON-like document. So the *tags* in the categories ***lower_colon*** and ***lower_colon2*** could be treated that way. In the case of the ***lower*** category, we can add directly the *tags* as attributes to our document.
 
-Regarding the ***other*** category, we should check what kind of *tags* we have. Following the last procedure, we are going to count how many different *keys* we have for those *tags*:
+Regarding the ***other*** category and the problematic characters, we should check what kind of *tags* we have. Following the last procedure, we are going to count how many different *keys* we have for those *tags*:
 
 ``` json
 {'node': {'lower': { ... },
@@ -171,10 +171,9 @@ Regarding the ***other*** category, we should check what kind of *tags* we have.
  'way': {'lower': { ... },
  		 'lower_colon': { ... },
          'lower_colon2': { ... },
-         'probemchars': {},
+         'probemchars': {u'Torre\xf3n del castillo de los Salazar': 1},
          'other': {'FIXME': 1,
                    'N': 1,
-                   u'Torre\xf3n del castillo de los Salazar': 1,
                    'fuel:GTL_diesel': 2,
                    'fuel:diesel_B': 1,
                    'fuel:octane_95': 9,
@@ -183,7 +182,7 @@ Regarding the ***other*** category, we should check what kind of *tags* we have.
 
 As we can see, most of the cases have been classified into this category because they have capital letters or even numbers. The [OSM wiki](http://wiki.openstreetmap.org/wiki/Tags) specifies that *both the key and value are free format text fields*, however it is not a common practice to include such kind of characters on the *key*. We are going to analyze each one of those values to understand what they mean.
 
-The [**FIXME**](http://wiki.openstreetmap.org/wiki/Key:fixme) *key* *"allows contributors to mark objects and places that need further attention”*. The **CODIGO** *key* does not seem to have any meaning, we will try to understand what it means later. The **N** *key* seems to be some kind of error, we will try to discover its meaning later too. The **naptan** namespace references the [NaPTAN and NPTG](http://wiki.openstreetmap.org/wiki/NaPTAN) datasets for bus stops and places which the [UK Department for Transport](http://www.dft.gov.uk/) and [Traveline](http://www.traveline.org.uk/aboutTL.htm) have offered to make available to OpenStreetMap project, so given that this region belongs to Spain, I suppose these values should not be there. The [**ideewfs**](http://wiki.openstreetmap.org/wiki/ES:RGN) *key* refers to the *Web Feature Services* (WFS) of the *Infraestructura de Datos Espaciales de España* (IDEE - Spatial Data Infrastructure of Spain), which is a web service to consult geographic features of Spain, so this data refers to data that belongs to the *Red Geodésica Nacional* (RGN - National Geodetic Network). The [**ref**](http://wiki.openstreetmap.org/wiki/Key:ref) *key* is used for reference numbers or codes (as we have seen for referencing the *nodes* within a *way*), which in this case has the **RRG** namespace, that is referenced on the RGN (as the **ideewfs**). Nevertheless, I have not found any reference about what it means, so we will treat them the same way as the others. The penultimate element is the [**fuel**](http://wiki.openstreetmap.org/wiki/Key:fuel) *key*, which describes which fuels are available at [amenity](http://wiki.openstreetmap.org/wiki/Key:amenity)=[fuel](http://wiki.openstreetmap.org/wiki/Tag:amenity%3Dfuel) sites. Finally we have a value `u'Torre\xf3n del castillo de los Salazar'` that clearly should not be there because it refers to a name of some kind of castle-like building, so it has to be within the *value* of a **[historic](http://wiki.openstreetmap.org/wiki/Key:historic):castle** *key* (for example).
+The [**FIXME**](http://wiki.openstreetmap.org/wiki/Key:fixme) *key* *"allows contributors to mark objects and places that need further attention”*. The **CODIGO** *key* does not seem to have any meaning, we will try to understand what it means later. The **N** *key* seems to be some kind of error, we will try to discover its meaning later too. The **naptan** namespace references the [NaPTAN and NPTG](http://wiki.openstreetmap.org/wiki/NaPTAN) datasets for bus stops and places which the [UK Department for Transport](http://www.dft.gov.uk/) and [Traveline](http://www.traveline.org.uk/aboutTL.htm) have offered to make available to OpenStreetMap project, so given that this region belongs to Spain, I suppose these values should not be there. The [**ideewfs**](http://wiki.openstreetmap.org/wiki/ES:RGN) *key* refers to the *Web Feature Services* (WFS) of the *Infraestructura de Datos Espaciales de España* (IDEE - Spatial Data Infrastructure of Spain), which is a web service to consult geographic features of Spain, so this data refers to data that belongs to the *Red Geodésica Nacional* (RGN - National Geodetic Network). The [**ref**](http://wiki.openstreetmap.org/wiki/Key:ref) *key* is used for reference numbers or codes (as we have seen for referencing the *nodes* within a *way*), which in this case has the **RRG** namespace, that is referenced on the RGN (as the **ideewfs**). Nevertheless, I have not found any reference about what it means, so we will treat them the same way as the others. The penultimate element is the [**fuel**](http://wiki.openstreetmap.org/wiki/Key:fuel) *key*, which describes which fuels are available at [amenity](http://wiki.openstreetmap.org/wiki/Key:amenity)=[fuel](http://wiki.openstreetmap.org/wiki/Tag:amenity%3Dfuel) sites. Finally we have a value within the **problemchars** category,  `u'Torre\xf3n del castillo de los Salazar'` that clearly should not be there because it refers to a name of some kind of castle-like building, so it has to be within the *value* of a **[historic](http://wiki.openstreetmap.org/wiki/Key:historic):castle** *key* (for example).
 
 Summarizing, we can proceed to storage as attributes in our document the *keys* **FIXME** (because we do not know what that user was referring to) and **fuel**. In the case of **ideewfs** and **ref:RRG**, it turns out that these *nodes* has a *tag* with a **source** *key* pointing to the IDEE, so both reference to the same source. However, we are not sure about the meaning of those *tags*, so we will need further analysis of the *keys*. The case **CODIGO** refers to a some specific trees that are protected by the Basque Government and have a unique identifier that can be consulted [here](http://www.uragentzia.euskadi.net/u81-ecoaguas/es/u95aWar/lugaresJSP/U95aVolverLugares.do?u95aMigasPan=L,1,1,1,3,1,1;L,2,13674,018;H,2,14021,016;L,2,13745,002;EN,1,9,1,300;L,2,13733,007;). They are under the [*Primary Feature* **natural**](http://wiki.openstreetmap.org/wiki/Map_Features#Natural) so we can treat these values as other attributes within our object.
 
@@ -319,26 +318,16 @@ As we have seen before, the final goal is to clean and store the OSM *Elements*,
 Once we have identified the main problems we want to solve in the original data, we will create a procedure to clean it. The tasks we are going to do are the following:
 
 - [x] Nest *common* attributes (except *id* and *visible*) into a *creation* attribute.
-      
 - [x] Create a *type* attribute (*node* or *way*).
-      
 - [x] Create array with position for *nodes*.
-      
 - [x] Create array for node references on *ways*.
-      
 - [x] Re-organize attributes, creating nested elements for *namespaces*.
-      
 - [x] Clean *tags* according the analysis we have made:
-      
-      ``` 
-        - [x] Errors in *keys*.
-        - [x] Errors in *values*.
-        - [x] Street types correction (ex. from `C/` to `Calle`).
-        - [ ] Others (like correct all-caps nomenclature).
-      ```
-      
+      - [x] Errors in *keys*.
+      - [x] Errors in *values*.
+      - [x] Street types correction (ex. from `C/` to `Calle`).
+      - [ ] Others (like correct all-caps nomenclature).
 - [x] Create a JSON object for each *Element* (*node* or *way*) in the original document.
-      
 - [x] Import all JSON objects into a MongoDB database.
 
 This entire procedure (except the final step) can be found in the script [clean.py](./src/clean.py), which creates a [*cleaned.jsonl*](http://jsonlines.org/) file that we could import later to our MongoDB database using the [*mongoimport* tool](http://docs.mongodb.org/manual/reference/program/mongoimport/) as follows:
